@@ -151,7 +151,7 @@ def eq_constraint(param, observations, Cp_condition):
     return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
 
 # Constraints
-Cp_condition = 'all'  #'burst', 'marginal', 'all'  ### choose one of the here ###
+Cp_condition = 'burst'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
 constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
 bounds = [(0, 1)]*6
