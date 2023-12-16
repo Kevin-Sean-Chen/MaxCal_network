@@ -157,7 +157,8 @@ constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_co
 bounds = [(0, 1)]*6
 
 # Perform optimization using SLSQP method
-P0 = np.random.rand(nc,nc)
+P0 = np.ones((nc,nc))  # uniform prior
+#P0 = np.random.rand(nc,nc)
 P0 = P0 / P0.sum(axis=1, keepdims=True)
 param0 = np.random.rand(6)*1.
 result = minimize(objective, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
@@ -178,10 +179,23 @@ for ii in range(3):
     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
     
     # Perform optimization using SLSQP method
-    P0 = np.random.rand(nc,nc)
+    P0 = np.ones((nc,nc))
     P0 = P0 / P0.sum(axis=1, keepdims=True)
     param0 = np.random.rand(6)*1.
-    result = minimize(objective, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+    
+    # excepting error code from numerical optimization
+    max_attempts = 5  # Set the maximum number of attempts
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = minimize(objective, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+            break
+        except Exception as LinAlgError:
+            if attempt < max_attempts:
+                result = minimize(objective, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+            else:
+                raise  
+    
     frw_inf = result.x
     frw_inference[ii,:] = frw_inf
     
