@@ -151,7 +151,7 @@ def eq_constraint(param, observations, Cp_condition):
     return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
 
 # Constraints
-Cp_condition = 'burst'  #'marginal', 'all'  ### choose one of the here ###
+Cp_condition = 'all'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
 constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
 bounds = [(0, 1)]*6
@@ -166,15 +166,37 @@ frw_inf = result.x
 print('true frw:', param_true)
 print('inferred frw:', frw_inf)
 
-# %%
+# %% systemetic analysis
 ###############################################################################
+# %%
+param_true = np.random.rand(6)
+conditions = ['all','burst','marginal']
+frw_inference = np.zeros((3,6))
+for ii in range(3):
+    Cp_condition = conditions[ii]
+    observations = obs_given_frw(param_true, Cp_condition)
+    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+    
+    # Perform optimization using SLSQP method
+    P0 = np.random.rand(nc,nc)
+    P0 = P0 / P0.sum(axis=1, keepdims=True)
+    param0 = np.random.rand(6)*1.
+    result = minimize(objective, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+    frw_inf = result.x
+    frw_inference[ii,:] = frw_inf
+    
+# %%
+bars = np.concatenate((param_true[None,:], frw_inference))
+num_rows, num_cols = bars.shape
+bar_positions = np.arange(num_cols)
+labels = ['true', 'all', 'burst',  'marginal']
+col_labels = ['f1','r1','w12','f2','r2','w21']
 
-# %% init optimization
-n_contraints = 10
-observations = obs_given_frw(param_true)
-beta0 = np.random.randn(n_contraints)
-P0 = np.random.rand(nc,nc)
-P0 = P0 / P0.sum(axis=1, keepdims=True)
-param0 = (0,0,0,0,0,0) + param_true*0 + np.random.rand(6)*1.
-x0 = np.concatenate((param0, beta0))
+plt.figure(figsize=(10, 6))
+for i in range(num_rows):
+    plt.bar(bar_positions + i * 0.2, bars[i, :], width=0.2, label=labels[i])
+    
+plt.legend(fontsize=15)
+plt.xticks(bar_positions + 0.2, [col_labels[col] for col in range(num_cols)])
+
     
