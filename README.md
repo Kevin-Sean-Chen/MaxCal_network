@@ -9,3 +9,9 @@ Code includes
 - Markov dynamic spike trains
 - MaxCal to infer connectivity
 - MaxCal in the parameter space
+
+### To-do:
+
+- explore symmetry effects
+- generalize to continuous time
+- fit to experimental data
