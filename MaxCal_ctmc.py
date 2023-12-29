@@ -73,7 +73,7 @@ def bursting(P, param):
     piB2 = pi[3]*1
     etaB01 = etas[0,1] + etas[0,2]
     etaB12 = etas[1,3] + etas[2,3]
-    etaB02 = etas[0,3]*1
+    etaB02 = etas[0,3]*1   # I assume this does not exist in continuous time?
     JB = Js[0,3]*1
     return piB0, piB2, etaB01, etaB12, etaB02, JB
 
@@ -84,10 +84,16 @@ def marginalization(P, param):
     etas = comp_etas(P)
     _,pi = ctmc_M(param)
     piX0 = pi[0] + pi[1]
-    etaX = etas[1,3] + etas[1,2] + etas[0,3] + etas[0,2]
+    etaX = etas[1,3] + etas[1,2] + etas[0,3] + etas[0,2]  # this should be adjusted too...
     piY0 = pi[0] + pi[2]
     etaY = etas[2,3] + etas[0,1] + etas[1,2] + etas[0,3]
     return piX0, etaX, piY0, etaY
+
+def edge_flux(P, param):
+    """
+    Peter's edge flux measurements
+    """
+    return ### need to confirm this calculation...
 
 # %% Max-Cal functions
 def MaxCal_D(Pij, kij0, param):
@@ -142,23 +148,6 @@ def tilted_q(beta, kij0, constraint_list, combinations, obs_list):
     vec_dot_norm = np.sqrt(np.abs(np.dot(vrx, vlx)))  # normalization factor for unit dot product
     vrx, vlx = np.abs(vrx)/vec_dot_norm, np.abs(vlx)/vec_dot_norm  # normalize eigen vectors
     return q, np.real(vrx), vlx, np.real(lamb)
-
-
-def objective_param(param, kij0):
-    """
-    objective in the parameter space, using frw and adding extra constraints
-    """
-    Pyx,_ = ctmc_M(param)
-    D = MaxCal_D(Pyx, kij0, param)
-    return D
-
-def objective_GartnerEllis(beta, g_bar, kij0):
-    """
-    a function of beta and g_bar, here we optimize for beta*, g_bar needs to be specify
-    """
-    _,_,_, lamb = tilted_q(beta, kij0, g_bar)
-    obj = np.dot(beta, g_bar) - np.log(lamb)
-    return -obj # do scipy.minimization on thi
 
 def posterior_k(beta, kij0, constraint_list, combinations, obs_list, vrx, lamb):
     """
@@ -258,6 +247,27 @@ def C_P(P, observations, param, Cp_condition='all'):
         c_P_frw = np.array([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10])  # all constraints
     return c_P_frw - observations
 
+def objective_param(param, kij0):
+    """
+    objective in the parameter space, using frw and adding extra constraints
+    """
+    Pyx,_ = ctmc_M(param)
+    D = MaxCal_D(Pyx, kij0, param)
+    return D
+
+def eq_constraint(param, observations, Cp_condition):
+    Pxy = P_frw_ctmc(param)
+    cp = C_P(Pxy, observations, param, Cp_condition)
+    return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
+
+def objective_GartnerEllis(beta, g_bar, kij0):
+    """
+    a function of beta and g_bar, here we optimize for beta*, g_bar needs to be specify
+    """
+    _,_,_, lamb = tilted_q(beta, kij0, g_bar)
+    obj = np.dot(beta, g_bar) - np.log(lamb)
+    return -obj # do scipy.minimization on thi
+
 # %% ##########################################################################
 # Notes:
     ### check on CTMC matrix
@@ -269,16 +279,7 @@ edg_prob = 0
 constraint_list = [gij_burst, gij_marginal, gij_edge]
 obs_list = [0, pi_marg, edg_prob]
 
-# %%
-def objective(param, P0):
-    Pyx,_ = ctmc_M(param)
-    D = MaxCal_D(Pyx, P0, param)
-    return D
-def eq_constraint(param, observations, Cp_condition):
-    Pxy = P_frw_ctmc(param)
-    cp = C_P(Pxy, observations, param, Cp_condition)
-    return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
-
+# %% constrained optimization
 # Constraints
 Cp_condition = 'burst'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
@@ -292,6 +293,6 @@ P0 = P0 / P0.sum(axis=1, keepdims=True)
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, np.sum(P0,1))
 param0 = np.random.rand(6)*1.
-result = minimize(objective, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
 frw_inf = result.x
 
