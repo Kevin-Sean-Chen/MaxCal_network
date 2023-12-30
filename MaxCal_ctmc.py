@@ -10,6 +10,8 @@ from matplotlib import pyplot as plt
 import scipy as sp
 import itertools
 from scipy.optimize import minimize
+from scipy.linalg import expm
+from scipy.stats import expon
 
 import matplotlib 
 matplotlib.rc('xtick', labelsize=20) 
@@ -20,7 +22,7 @@ matplotlib.rc('ytick', labelsize=20)
 ###
 
 # %% 2-neuron with continuous time structure
-f1,r1,w12 = 0.5,0.9,0.3
+f1,r1,w12 = 0.5,0.9,0.3  # can be larger than one in ctmc!
 f2,r2,w21 = 0.2,0.7,0.5
 N = 2  # number of neurons
 spins = [0,1]  # binary patterns
@@ -36,14 +38,15 @@ def ctmc_M(param):
     return transition matrix and steady-state distirubtion
     """
     f1,r1,w12,  f2,r2,w21 = param
-    M = np.array([[0,            f2*(1-f1),     f1*(1-f2),      0],
-                  [(1-w21)*r2,   0,             0,              w21*(1-r2)],
-                  [(1-w12)*r1,   0     ,        0,              w12*(1-r1)],
-                  [0,              r1*(1-r2),   (1-r2)*r1,      0]]) ## 00,01,10,11
+    M = np.array([[0,    f2,   f1,    0],
+                  [r2,   0,    0,     w21],
+                  [r1,   0,    0,     w12],
+                  [0,    r1,   r1,    0]]) ## 00,01,10,11
     np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
     pi_ss = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
+    # M = pi_ss[:,None]*M  # steady-state transition probability?
     return M, np.real(pi_ss)
 
 def P_frw_ctmc(param):
@@ -53,7 +56,7 @@ def P_frw_ctmc(param):
     k, pi = ctmc_M(param)  # calling asymmetric network
     Pxy = np.zeros((nc,nc))
     for ii in range(nc):
-        Pxy[ii,:] = k[ii,:]*pi[ii]  # compute joint from transition k and steady-state pi
+        Pxy[ii,:] = k[ii,:]*pi[ii]  # compute joint from transition k and steady-state pi (this is wrong using Q!?)
     return Pxy
     
 def comp_etas(P):
@@ -89,11 +92,50 @@ def marginalization(P, param):
     etaY = etas[2,3] + etas[0,1] + etas[1,2] + etas[0,3]
     return piX0, etaX, piY0, etaY
 
-def edge_flux(P, param):
+def edge_flux(param, total_time, time_step):
     """
     Peter's edge flux measurements
     """
-    return ### need to confirm this calculation...
+    Q,_ = ctmc_M(param)
+    states,_ = sim_Q(Q, total_time, time_step)
+    flux_ij = np.zeros((nc,nc))  # counting matrix, ignoring the diagonal
+    for ii in range(nc):
+        for jj in range(nc):
+            if ii is not jj:
+                posi = np.where(states==ii)[0]
+                posj = np.where(states==jj)[0]
+                flux_ij[ii,jj] = len(np.intersect1d(posi-1, posj))
+    flux_ij = flux_ij/total_time
+    return flux_ij  ### need to confirm this calculation...
+
+def sim_Q(Q, total_time, time_step):
+    """
+    Simulate Markov chain given rate matrix Q, time length and steps
+    """
+    initial_state = np.random.randint(nc) # uniform to begin with
+    states = [initial_state]
+    times = [0.0]
+
+    current_state = initial_state
+    current_time = 0.0
+
+    while current_time < total_time:
+        rate = -Q[current_state, current_state]
+        next_time = current_time + expon.rvs(scale=1/rate)
+        if next_time > total_time:
+            break
+
+        transition_probabilities = expm(Q * (next_time - current_time))[current_state, :]
+        transition_probabilities /= transition_probabilities.sum()  # Normalize probabilities
+        next_state = np.random.choice(len(Q), p=transition_probabilities)
+
+        states.append(next_state)
+        times.append(next_time)
+
+        current_state = next_state
+        current_time = next_time
+
+    return np.array(states), np.array(times)
 
 # %% Max-Cal functions
 def MaxCal_D(Pij, kij0, param):
@@ -109,7 +151,8 @@ def MaxCal_D(Pij, kij0, param):
     for ii in range(n):
         for jj in range(n):
             if ii is not jj:
-                kl += Pij[ii,jj]*np.log(Pij[ii,jj]/(pi[ii]*kij0[ii,jj])+eps) + pi[ii]*kij0[ii,jj] - Pij[ii,jj]
+                kl += Pij[ii,jj]*(np.log(Pij[ii,jj]+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
+                      + pi[ii]*kij0[ii,jj] - Pij[ii,jj]
     return kl
 
 def get_stationary(M):
@@ -281,15 +324,15 @@ obs_list = [0, pi_marg, edg_prob]
 
 # %% constrained optimization
 # Constraints
-Cp_condition = 'burst'  #'burst', 'marginal', 'all'  ### choose one of the here ###
+Cp_condition = 'all'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
 constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-bounds = [(0, 1)]*6
+bounds = [(0, 100)]*6
 
 # Perform optimization using SLSQP method
 P0 = np.ones((nc,nc))  # uniform prior
 #P0 = np.random.rand(nc,nc)
-P0 = P0 / P0.sum(axis=1, keepdims=True)
+# P0 = P0 / P0.sum(axis=1, keepdims=True)
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, np.sum(P0,1))
 param0 = np.random.rand(6)*1.
