@@ -92,9 +92,21 @@ def marginalization(P, param):
     etaY = etas[2,3] + etas[0,1] + etas[1,2] + etas[0,3]
     return piX0, etaX, piY0, etaY
 
-def edge_flux(param, total_time, time_step):
+def edge_flux_inf(param):
     """
-    Peter's edge flux measurements
+    compute edge flux with infinite data using pi_i k_ij
+    """
+    kij, pi = ctmc_M(param)
+    flux_ij = np.zeros((nc,nc))
+    for ii in range(nc):
+        for jj in range(nc):
+            if ii is not jj:
+                flux_ij[ii,jj] = pi[ii]*kij[ii,jj]
+    return flux_ij
+
+def edge_flux_data(param, total_time, time_step):
+    """
+    edge flux measurements from data
     """
     Q,_ = ctmc_M(param)
     states,_ = sim_Q(Q, total_time, time_step)
@@ -255,12 +267,16 @@ def obs_given_frw(param, Cp_condition='all'):
     Pxy = P_frw_ctmc(param)
     burst_obs = bursting(Pxy, param)
     marg_obs = marginalization(Pxy, param)
+    edge_obs = edge_flux_inf(param)
+    edge_obs = edge_obs.reshape(-1)
     if Cp_condition=='burst':
         obs = burst_obs*1
     elif Cp_condition=='marginal':
         obs = marg_obs*1
     elif Cp_condition=='all':
         obs = np.concatenate((burst_obs, marg_obs))
+    elif Cp_condition=='test_edge':
+        obs = np.concatenate((burst_obs, marg_obs, edge_obs))
     return obs
 
 def C_P(P, observations, param, Cp_condition='all'):
@@ -272,6 +288,8 @@ def C_P(P, observations, param, Cp_condition='all'):
     etas = comp_etas(P)
     Js = comp_Js(P)
     _,pi = ctmc_M(param)
+    flux_ij = edge_flux_inf(param)
+    c_edge = flux_ij.reshape(-1)
     c1 = pi[0]
     c2 = pi[3]
     c3 = etas[0,1] + etas[0,2]
@@ -288,6 +306,9 @@ def C_P(P, observations, param, Cp_condition='all'):
         c_P_frw = np.array([c7,c8,c9,c10]) # marginal only
     elif Cp_condition=='all':
         c_P_frw = np.array([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10])  # all constraints
+    elif Cp_condition=='test_edge':
+        c_P_frw = np.array([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10])
+        c_P_frw = np.concatenate((c_P_frw, c_edge))
     return c_P_frw - observations
 
 def objective_param(param, kij0):
@@ -324,7 +345,7 @@ obs_list = [0, pi_marg, edg_prob]
 
 # %% constrained optimization
 # Constraints
-Cp_condition = 'all'  #'burst', 'marginal', 'all'  ### choose one of the here ###
+Cp_condition = 'test_edge'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
 constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
 bounds = [(0, 100)]*6
@@ -338,4 +359,7 @@ np.fill_diagonal(P0, np.sum(P0,1))
 param0 = np.random.rand(6)*1.
 result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
 frw_inf = result.x
+
+print('true frw:', param_true)
+print('inferred frw:', frw_inf)
 
