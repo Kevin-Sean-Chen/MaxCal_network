@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec 26 03:31:18 2023
+Created on Wed Jan  3 01:50:17 2024
 
 @author: kevin
 """
+
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -18,30 +19,44 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 ###
-# Continuous time formulism for Max-Cal in networks
+# Continuous time formulism with 3-neurons
+# for Max-Cal in network structure
 ###
 
-# %% 2-neuron with continuous time structure
-f1,r1,w12 = 5,9,3  # can be larger than one in ctmc!
-f2,r2,w21 = 0.2,0.7,0.5
-N = 2  # number of neurons
+# %% 3-neuron with continuous time structure
+f1,f2,f3 = 1,2,3  # firing
+r1,r2,r3 = 3,5,7  # refractory
+w12,w13,w21,w23,w31,w32 = np.random.rand(6)*3  # first order coupling, can be negative!
+w123,w132,w231 = np.random.rand(3)*2  # second-oder coupling
+N = 3  # number of neurons
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
-nc = 2**2  # number of total states of 2-neuron
-param_true = (f1,r1,w12,\
-              f2,r2,w21)  # store ground-truth parameters
+nc = 2**3  # number of total states of 3-neuron
+param_true = (f1,f2,f3,\
+              r1,r2,r3,\
+              w12,w13,w21,w23,w31,w32,\
+              w123,w132,w231)  # store ground-truth parameters
+
+def param2frw(param):
+    f1,f2,f3,  r1,r2,r3,  w12,w13,w21,w23,w31,w32,  w123,w132,w231 = param
+    return f1,f2,f3,  r1,r2,r3,  w12,w13,w21,w23,w31,w32,  w123,w132,w231
     
 # %% function for the network dynamics and observations
 def ctmc_M(param):
     """
-    With continuous-time asymmetric 2-neuron circuit, given parameters f12,r12,w12,21
+    With continuous-time asymmetric 3-neuron circuit, given parameters 15 frw parameterd
     return transition matrix and steady-state distirubtion
     """
-    f1,r1,w12,  f2,r2,w21 = param
-    M = np.array([[0,    f2,   f1,    0],
-                  [r2,   0,    0,     w21],
-                  [r1,   0,    0,     w12],
-                  [0,    r1,   r1,    0]]) ## 00,01,10,11   # f1*np.exp(w21)
+    f1,f2,f3,  r1,r2,r3,  w12,w13,w21,w23,w31,w32,  w123,w132,w231 = param
+    M = np.array([[0,    f3,   f2,   0,              f1,   0,               0,               0],
+                  [r3,   0,    0,    f2*np.exp(w32), 0,    f1*np.exp(w31),  0,               0],
+                  [r2,   0,    0,    f3*np.exp(w23), 0,    0,               f1*np.exp(w21),  0],
+                  [0,    r2,   r3,   0,              0,    0,               0,               f1*np.exp(w231)],
+                  [r1,   0,    0,    0,              0,    f3*np.exp(w13),  f2*np.exp(w12),  0],
+                  [0,    r1,   0,    0,              r3,   0,               0,               f2*np.exp(w132)],
+                  [0,    0,    r1,   0,              r2,   0,               0,               f3*np.exp(w123)],
+                  [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
+                ## 000,001,010,011,100,101,110,111   # f1*np.exp(w21)
     np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
@@ -67,31 +82,33 @@ def comp_Js(P):
 
 def bursting(P, param):
     """
-    Bursting observations
+    Bursting observations, modified for 3-neuron continuous time
     """
     etas = comp_etas(P)
-    Js = comp_Js(P)
+    # Js = comp_Js(P)
     _,pi = ctmc_M(param)
     piB0 = pi[0]*1
-    piB2 = pi[3]*1
-    etaB01 = etas[0,1] + etas[0,2]
-    etaB12 = etas[1,3] + etas[2,3]
-    etaB02 = etas[0,3]*1   # I assume this does not exist in continuous time?
+    piB3 = pi[-1]*1
+    etaB01 = etas[0,1] + etas[0,2] + etas[0,4]  # zeros to one spike
+    etaB12 = etas[1,3] + etas[1,5] + etas[2,3] + etas[2,6] + etas[4,5] + etas[4,6]
+    etaB23 = etas[3,7] + etas[4,7] + etas[6,7]
     # eta B23, all have three terms... triangle for 1 or 2 spikes, point for 0 and 3 spikes
-    JB = Js[0,3]*1
-    return piB0, piB2, etaB01, etaB12, etaB02, JB
+    return piB0, piB3, etaB01, etaB12, etaB23
 
 def marginalization(P, param):
     """
-    Marginal observations
+    Marginal observations, for three-neuron in continuous time
     """
     etas = comp_etas(P)
     _,pi = ctmc_M(param)
-    piX0 = pi[0] + pi[1]
-    etaX = etas[1,3] + etas[1,2] + etas[0,3] + etas[0,2]  # this should be adjusted too...
-    piY0 = pi[0] + pi[2]
-    etaY = etas[2,3] + etas[0,1] + etas[1,2] + etas[0,3]  # three planes for piXYZ, etaXYZ sum edge within plane
-    return piX0, etaX, piY0, etaY
+    piX0 = pi[0] + pi[1] + pi[2] + pi[3]
+    piY0 = pi[0] + pi[1] + pi[4] + pi[5]
+    piZ0 = pi[0] + pi[2] + pi[4] + pi[6]
+    etaX = etas[1,5] + etas[3,7] + etas[0,4] + etas[2,6]  # is this correct?
+    etaY = etas[0,2] + etas[4,6] + etas[5,7] + etas[1,3]
+    etaZ = etas[0,1] + etas[2,3] + etas[4,5] + etas[6,7]  
+    # three planes for piXYZ, etaXYZ sum edge within plane
+    return piX0, etaX, piY0, etaY, piZ0, etaZ
 
 def edge_flux_inf(param):
     """
@@ -178,89 +195,6 @@ def get_stationary(M):
     pix = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
     return pix
 
-def tilted_q(beta, kij0, constraint_list, combinations, obs_list):
-    """
-    tilted q matrix for continuous time
-    input multiplier beta, prior transition kij0, list of constraints, combination of states, and observation list
-    output the tilted matrix q, its eigen-vector and value
-    """
-    n = kij0.shape[0]
-    num_const = len(beta)
-    Gxy = np.zeros((n, n, num_const))
-    q = np.zeros((n,n))
-    for ii in range(n):
-        for jj in range(n):
-            for cc in range(num_const):
-                Gxy[ii,jj,cc] = constraint_list[cc](combinations[ii] , combinations[jj], obs_list[cc])
-            if ii is not jj:
-                q[ii,jj] = kij0[ii,jj]*np.exp(Gxy[ii,jj,:]@beta)
-            else:
-                q[ii,jj] = Gxy[ii,jj,:]@beta - np.sum(kij0[ii,:]) + kij0[ii,jj]
-    
-    ### compute eigen-value and vector
-    uu, vr = np.linalg.eig(q)  # right vector
-    u2, vl = np.linalg.eig(q.T)  # left vectors
-    lamb,rp,lp = np.max(np.real(uu)), np.argmax(np.real(uu)), np.argmax(np.real(u2))  # max real eigen value
-    vrx, vlx = np.real(vr[:,rp]), np.real(vl[:,lp])
-    vec_dot_norm = np.sqrt(np.abs(np.dot(vrx, vlx)))  # normalization factor for unit dot product
-    vrx, vlx = np.abs(vrx)/vec_dot_norm, np.abs(vlx)/vec_dot_norm  # normalize eigen vectors
-    return q, np.real(vrx), vlx, np.real(lamb)
-
-def posterior_k(beta, kij0, constraint_list, combinations, obs_list, vrx, lamb):
-    """
-    Parameters
-    ----------
-    beta : vector
-        multipliers we aim to optimize for.
-    kij0 : matrix (N x N)
-        prior state transition rate.
-    vrx : vector (N)
-        right eigen-vector of the tilted matrix.
-    lamb : scalar
-        eigen-value of the tilted matrix.
-    g : tensor (N,N,obs)
-        pair-wise observables off-diagonal and unit-wise along the diagonal.
-
-    Returns
-    -------
-    k : matrix (N x N)
-        the posterioir transition matrix.
-    """
-    n = len(vrx)
-    k = np.zeros((n,n))
-    num_const = len(beta)
-    Gxy = np.zeros((n, n, num_const))
-    for ii in range(n):
-        for jj in range(n):
-            for cc in range(num_const):
-                ### gathering the list of patterns and observables, and feed to the function list
-                Gxy[ii,jj,cc] = constraint_list[cc](combinations[ii] , combinations[jj], obs_list[cc])
-                ### fill in the matrix
-            if ii is not jj:
-                k[ii,jj] = kij0[ii,jj]*np.exp(Gxy[ii,jj,:]@beta)*vrx[ii]/vrx[jj]
-            else:
-                k[ii,jj] = Gxy[ii,jj,:]@beta - np.sum(kij0[ii,:]) + kij0[ii,jj] - lamb
-    return k
-
-# def gij_burst(x,y,a=0):
-#     """
-#     construct observable g(i,j) with pairs
-#     """
-#     f_ij, g_ij_kl = 0,0
-#     if (x==(0,0)):
-#         f_ij = 1
-#     if (x==(0,0)) and (y==(1,0)):
-#         g_ij_kl = -1
-#     gxy = f_ij + g_ij_kl - a
-#     return gxy
-
-# def gij_marginal(test):
-#     g = 0
-#     return g
-
-# def gij_edge(test):
-#     g = 0
-#     return g
 
 def obs_given_frw(param, Cp_condition='all'):
     """
@@ -279,6 +213,7 @@ def obs_given_frw(param, Cp_condition='all'):
         obs = np.concatenate((burst_obs, marg_obs))
     elif Cp_condition=='test_edge':
         obs = np.concatenate((burst_obs, marg_obs, edge_obs))
+        # obs = edge_obs*1
     return obs
 
 def C_P(P, observations, param, Cp_condition='all'):
@@ -292,25 +227,24 @@ def C_P(P, observations, param, Cp_condition='all'):
     _,pi = ctmc_M(param)
     flux_ij = edge_flux_inf(param)
     c_edge = flux_ij.reshape(-1)
-    c1 = pi[0]
-    c2 = pi[3]
-    c3 = etas[0,1] + etas[0,2]
-    c4 = etas[1,3] + etas[2,3]
-    c5 = etas[0,3]
-    c6 = Js[0,3]
-    c7 = pi[0] + pi[1]
-    c8 = etas[1,3] + etas[1,2] + etas[0,3] + etas[0,2]
-    c9 = pi[0] + pi[2]
-    c10 = etas[2,3] + etas[0,1] + etas[1,2] + etas[0,3]
+    
+    Pxy = P_frw_ctmc(param)
+    burst_obs = bursting(Pxy, param)
+    marg_obs = marginalization(Pxy, param)
+    burst_obs = np.array(burst_obs)
+    marg_obs = np.array(marg_obs)
+    
     if Cp_condition=='burst':
-        c_P_frw = np.array([c1,c2,c3,c4,c5,c6]) # burst only
+        c_P_frw = burst_obs*1 # burst only
     elif Cp_condition=='marginal':
-        c_P_frw = np.array([c7,c8,c9,c10]) # marginal only
+        c_P_frw = marg_obs*1 # marginal only
     elif Cp_condition=='all':
-        c_P_frw = np.array([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10])  # all constraints
+        c_P_frw = np.concatenate((burst_obs, marg_obs)) # burst_marginal constraints
     elif Cp_condition=='test_edge':
-        c_P_frw = np.array([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10])
+        c_P_frw = np.concatenate((burst_obs, marg_obs))
         c_P_frw = np.concatenate((c_P_frw, c_edge))
+        # c_P_frw = np.concatenate((marg_obs, c_edge))
+        # c_P_frw = c_edge*1
     return c_P_frw - observations
 
 def objective_param(param, kij0):
@@ -326,31 +260,18 @@ def eq_constraint(param, observations, Cp_condition):
     cp = C_P(Pxy, observations, param, Cp_condition)
     return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
 
-def objective_GartnerEllis(beta, g_bar, kij0):
-    """
-    a function of beta and g_bar, here we optimize for beta*, g_bar needs to be specify
-    """
-    _,_,_, lamb = tilted_q(beta, kij0, g_bar)
-    obj = np.dot(beta, g_bar) - np.log(lamb)
-    return -obj # do scipy.minimization on thi
-
 # %% ##########################################################################
 # Notes:
     ### check on CTMC matrix
     ### should I turn back to the constraint-opimization code, rather than using g(x,y)?\
     ### if so we don't need the tilted matrix q right, is there a preference?
-# %% test optimization (place holder for now)
-# pi_marg = 0
-# edg_prob = 0
-# constraint_list = [gij_burst, gij_marginal, gij_edge]
-# obs_list = [0, pi_marg, edg_prob]
 
 # %% constrained optimization
 # Constraints
 Cp_condition = 'test_edge'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
 constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-bounds = [(0, 100)]*6
+bounds = [(0, 100)]*len(param_true)
 
 # Perform optimization using SLSQP method
 P0 = np.ones((nc,nc))  # uniform prior
@@ -358,7 +279,7 @@ P0 = np.ones((nc,nc))  # uniform prior
 # P0 = P0 / P0.sum(axis=1, keepdims=True)
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, np.sum(P0,1))
-param0 = np.random.rand(6)*1.
+param0 = np.random.rand(len(param_true))*1.
 result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
 frw_inf = result.x
 
@@ -366,6 +287,40 @@ print('true frw:', param_true)
 print('inferred frw:', frw_inf)
 
 # %%
+###############################################################################
+# %% compare constraints!
+conditions = ['test_edge','all','marginal']
+frw_inference = np.zeros((3,len(param_true)))
+for ii in range(3):
+    Cp_condition = conditions[ii]
+    observations = obs_given_frw(param_true, Cp_condition)
+    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+    
+    # Perform optimization using SLSQP method
+    P0 = np.ones((nc,nc))  # uniform prior
+    np.fill_diagonal(P0, np.zeros(nc))
+    np.fill_diagonal(P0, np.sum(P0,1))
+    param0 = np.random.rand(len(param_true))*1
+    
+    result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds) 
+    
+    frw_inf = result.x
+    frw_inference[ii,:] = frw_inf
+
+# %%
+bars = np.concatenate((np.array(param_true)[None,:], frw_inference))
+num_rows, num_cols = bars.shape
+bar_positions = np.arange(num_cols)
+labels = ['true','edge+all', 'edge+burst', 'burst+marg']
+
+plt.figure(figsize=(10, 6))
+for i in range(num_rows):
+    plt.bar(bar_positions + i * 0.2, bars[i, :], width=0.2, label=labels[i])
+    
+plt.legend(fontsize=15)
+plt.xlabel('parameters', fontsize=20)
+
+# %% Notes for next step
 ###############################################################################
 # three neurons
 # LIF neural model for demo
