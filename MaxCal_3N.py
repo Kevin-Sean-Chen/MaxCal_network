@@ -26,8 +26,8 @@ matplotlib.rc('ytick', labelsize=20)
 # %% 3-neuron with continuous time structure
 f1,f2,f3 = 1,2,3  # firing
 r1,r2,r3 = 3,5,7  # refractory
-w12,w13,w21,w23,w31,w32 = np.random.rand(6)*3  # first order coupling, can be negative!
-w123,w132,w231 = np.random.rand(3)*2  # second-oder coupling
+w12,w13,w21,w23,w31,w32 = np.random.randn(6)*.5  # first order coupling, can be negative!
+w123,w132,w231 = np.random.randn(3)*.5  # second-oder coupling
 N = 3  # number of neurons
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
@@ -205,15 +205,19 @@ def obs_given_frw(param, Cp_condition='all'):
     marg_obs = marginalization(Pxy, param)
     edge_obs = edge_flux_inf(param)
     edge_obs = edge_obs.reshape(-1)
+    _,pi = ctmc_M(param)
     if Cp_condition=='burst':
         obs = burst_obs*1
     elif Cp_condition=='marginal':
         obs = marg_obs*1
     elif Cp_condition=='all':
         obs = np.concatenate((burst_obs, marg_obs))
+        obs = edge_obs*1
     elif Cp_condition=='test_edge':
-        obs = np.concatenate((burst_obs, marg_obs, edge_obs))
+        obs = np.concatenate((burst_obs, marg_obs, edge_obs))  # check that this matches C_P
         # obs = edge_obs*1
+    elif Cp_condition=='Peter':
+        obs = np.append(edge_obs, pi[0])  # test with edge+pi000
     return obs
 
 def C_P(P, observations, param, Cp_condition='all'):
@@ -240,11 +244,14 @@ def C_P(P, observations, param, Cp_condition='all'):
         c_P_frw = marg_obs*1 # marginal only
     elif Cp_condition=='all':
         c_P_frw = np.concatenate((burst_obs, marg_obs)) # burst_marginal constraints
+        c_P_frw = c_edge*1
     elif Cp_condition=='test_edge':
         c_P_frw = np.concatenate((burst_obs, marg_obs))
         c_P_frw = np.concatenate((c_P_frw, c_edge))
-        # c_P_frw = np.concatenate((marg_obs, c_edge))
+        # c_P_frw = np.concatenate((burst_obs, c_edge))
         # c_P_frw = c_edge*1
+    elif Cp_condition=='Peter':
+        c_P_frw = np.append(c_edge, pi[0])
     return c_P_frw - observations
 
 def objective_param(param, kij0):
@@ -268,10 +275,10 @@ def eq_constraint(param, observations, Cp_condition):
 
 # %% constrained optimization
 # Constraints
-Cp_condition = 'test_edge'  #'burst', 'marginal', 'all'  ### choose one of the here ###
+Cp_condition = 'Peter'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
 constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-bounds = [(0, 100)]*len(param_true)
+bounds = [(-1, 10)]*len(param_true)
 
 # Perform optimization using SLSQP method
 P0 = np.ones((nc,nc))  # uniform prior
@@ -289,7 +296,7 @@ print('inferred frw:', frw_inf)
 # %%
 ###############################################################################
 # %% compare constraints!
-conditions = ['test_edge','all','marginal']
+conditions = ['test_edge','Peter','all']
 frw_inference = np.zeros((3,len(param_true)))
 for ii in range(3):
     Cp_condition = conditions[ii]
@@ -311,11 +318,11 @@ for ii in range(3):
 bars = np.concatenate((np.array(param_true)[None,:], frw_inference))
 num_rows, num_cols = bars.shape
 bar_positions = np.arange(num_cols)
-labels = ['true','edge+all', 'edge+burst', 'burst+marg']
+labels = ['true','edge+all', 'edge+pi000', 'edge']
 
 plt.figure(figsize=(10, 6))
 for i in range(num_rows):
-    plt.bar(bar_positions + i * 0.2, bars[i, :], width=0.2, label=labels[i])
+    plt.bar(bar_positions + i * 0.2, (bars[i, :]), width=0.2, label=labels[i])
     
 plt.legend(fontsize=15)
 plt.xlabel('parameters', fontsize=20)
