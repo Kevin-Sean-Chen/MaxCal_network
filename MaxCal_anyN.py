@@ -29,7 +29,7 @@ matplotlib.rc('ytick', labelsize=20)
 # zero-out pairs more than one bit flip
 
 # if works!! (hopefully)
-# sim 5 spiking neurons
+# sim 5 spiking neurons <- 3-4 might be enough! figure out input and strength
 # get 5 neurons retinal data
 # ... show effective coupling and effective field
 
@@ -42,11 +42,12 @@ matplotlib.rc('ytick', labelsize=20)
 # given N neurons
 # 2^N x 2^N
 # number of parameters is the edge count for a hypercube
-# N*2^N
+# N*2^N edges
+# N*2^N/2+N parameters!
 
 # %% N-neuron with continuous time structure
 N = 4  # number of neurons
-num_params = int((N*2**N)/2+N)  # number of parameters in this model ################ MIGHT BE WRONG!!! ####
+num_params = int((N*2**N)/2+N)  # number of parameters in this model
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 nc = 2**N  # number of total states of 3-neuron
