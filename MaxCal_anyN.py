@@ -44,7 +44,7 @@ matplotlib.rc('ytick', labelsize=20)
 # N*2^N
 
 # %% N-neuron with continuous time structure
-N = 5  # number of neurons
+N = 3  # number of neurons
 num_params = N*2**N  # number of parameters in this model
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
@@ -52,7 +52,8 @@ nc = 2**N  # number of total states of 3-neuron
 # fws = np.random.rand(N*2**N-N)  # effective parameter-- firing f and coupling w
 # rs = np.random.rand(N)  # refractoriness
 # param_true = (rs, fws)  # store true parameters in a tuple for passing functions
-param_true = np.random.rand(num_params)  # use rand for now...
+param_true = np.random.rand(num_params)*10  # use rand for now...
+# param_true = np.round(np.random.rand(num_params)*1, 3)
 
 # %% new generalized tilted function given parameters for size-N network
 def general_M(param, N=N):
@@ -107,9 +108,9 @@ def general_M(param, N=N):
     np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
-    pi_ss = np.real(vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])) 
+    pi_ss = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
     
-    return M, pi_ss
+    return M, np.real(pi_ss)
     
 # %% function for the network dynamics and observations
 def P_frw_ctmc(param):
@@ -202,7 +203,7 @@ def MaxCal_D(Pij, kij0, param):
     """
     pi = get_stationary(Pij)
     # kij = Pij / pi[:,None]
-    eps = 1e-10
+    eps = 1e-11
     kl = 0
     n = len(pi)
     for ii in range(n):
@@ -219,7 +220,7 @@ def get_stationary(M):
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
     pix = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
-    return pix
+    return np.real(pix)
 
 def obs_given_frw(param, Cp_condition='Peter'):
     """
@@ -233,6 +234,8 @@ def obs_given_frw(param, Cp_condition='Peter'):
     _,pi = general_M(param)
     if Cp_condition=='Peter':
         obs = np.append(edge_obs, pi[0])  # test with edge+pi000
+        # obs = np.append(obs, pi[-1])
+        # obs = np.concatenate((edge_obs, pi))
     return obs
 
 def C_P(P, observations, param, Cp_condition='Peter'):
@@ -253,6 +256,8 @@ def C_P(P, observations, param, Cp_condition='Peter'):
     
     if Cp_condition=='Peter':
         c_P_frw = np.append(c_edge, pi[0])
+        # c_P_frw = np.append(c_P_frw, pi[-1])
+        # c_P_frw = np.concatenate((c_edge, pi))
     return c_P_frw - observations
 
 def objective_param(param, kij0):
@@ -273,56 +278,62 @@ def eq_constraint(param, observations, Cp_condition):
 Cp_condition = 'Peter'  #'burst', 'marginal', 'all'  ### choose one of the here ###
 observations = obs_given_frw(param_true, Cp_condition)
 constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-bounds = [(-1, 10)]*len(param_true)
+bounds = [(.0, 100)]*len(param_true)
 
 # Perform optimization using SLSQP method
 P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, np.sum(P0,1))
 # param0 = (np.random.rand(N),  np.random.rand(N*2*N-N))
-param0 = np.random.rand(num_params)
-result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+param0 = np.random.rand(num_params)*1 + param_true*0
+# param0 = frw_inf*1
+# result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+
+tolerance = 1e-10
+result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds, tol=tolerance)
+
 frw_inf = result.x
 
-print('true frw:', param_true)
-print('inferred frw:', frw_inf)
+# print('true frw:', param_true)
+# print('inferred frw:', frw_inf)
 
 # %%
 plt.figure()
 plt.plot(param_true, frw_inf, 'o')
 plt.xlabel('true param', fontsize=20)
 plt.ylabel('inferred param', fontsize=20)
+plt.title('4 neuron')
 
 # %%
 ###############################################################################
-# %% compare constraints!
-conditions = ['test_edge','Peter','all']
-frw_inference = np.zeros((3,len(param_true)))
-for ii in range(3):
-    Cp_condition = conditions[ii]
-    observations = obs_given_frw(param_true, Cp_condition)
-    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+# # %% compare constraints!
+# conditions = ['test_edge','Peter','all']
+# frw_inference = np.zeros((3,len(param_true)))
+# for ii in range(3):
+#     Cp_condition = conditions[ii]
+#     observations = obs_given_frw(param_true, Cp_condition)
+#     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
     
-    # Perform optimization using SLSQP method
-    P0 = np.ones((nc,nc))  # uniform prior
-    np.fill_diagonal(P0, np.zeros(nc))
-    np.fill_diagonal(P0, np.sum(P0,1))
-    param0 = np.random.rand(len(param_true))*1
+#     # Perform optimization using SLSQP method
+#     P0 = np.ones((nc,nc))  # uniform prior
+#     np.fill_diagonal(P0, np.zeros(nc))
+#     np.fill_diagonal(P0, np.sum(P0,1))
+#     param0 = np.random.rand(len(param_true))*1
     
-    result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds) 
+#     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds) 
     
-    frw_inf = result.x
-    frw_inference[ii,:] = frw_inf
+#     frw_inf = result.x
+#     frw_inference[ii,:] = frw_inf
 
-# %%
-bars = np.concatenate((np.array(param_true)[None,:], frw_inference))
-num_rows, num_cols = bars.shape
-bar_positions = np.arange(num_cols)
-labels = ['true','edge+all', 'edge+pi000', 'edge']
+# # %%
+# bars = np.concatenate((np.array(param_true)[None,:], frw_inference))
+# num_rows, num_cols = bars.shape
+# bar_positions = np.arange(num_cols)
+# labels = ['true','edge+all', 'edge+pi000', 'edge']
 
-plt.figure(figsize=(10, 6))
-for i in range(num_rows):
-    plt.bar(bar_positions + i * 0.2, (bars[i, :]), width=0.2, label=labels[i])
+# plt.figure(figsize=(10, 6))
+# for i in range(num_rows):
+#     plt.bar(bar_positions + i * 0.2, (bars[i, :]), width=0.2, label=labels[i])
     
-plt.legend(fontsize=15)
-plt.xlabel('parameters', fontsize=20)
+# plt.legend(fontsize=15)
+# plt.xlabel('parameters', fontsize=20)
