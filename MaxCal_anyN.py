@@ -31,6 +31,7 @@ matplotlib.rc('ytick', labelsize=20)
 # if works!! (hopefully)
 # sim 5 spiking neurons
 # get 5 neurons retinal data
+# ... show effective coupling and effective field
 
 # %% alternative/better solution
 # directly work with f*exp(w)
@@ -44,8 +45,8 @@ matplotlib.rc('ytick', labelsize=20)
 # N*2^N
 
 # %% N-neuron with continuous time structure
-N = 3  # number of neurons
-num_params = N*2**N  # number of parameters in this model
+N = 4  # number of neurons
+num_params = int((N*2**N)/2+N)  # number of parameters in this model ################ MIGHT BE WRONG!!! ####
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 nc = 2**N  # number of total states of 3-neuron
@@ -101,7 +102,7 @@ def general_M(param, N=N):
             if mask[ii,jj]==1 and mask_r[ii,jj]==1: #only check those that generates one spike
                 F[ii,jj] = fws[kk]
                 kk = kk+1  # marching forward to fill in f*exp(wij) parts... need to later invert this!!
-
+    # print(kk)
     M = mask*R*F  
 
     ### compute steady-state
@@ -303,6 +304,32 @@ plt.plot(param_true, frw_inf, 'o')
 plt.xlabel('true param', fontsize=20)
 plt.ylabel('inferred param', fontsize=20)
 plt.title('4 neuron')
+
+# %% debugging
+M_,pi_ss_ = general_M(frw_inf)
+M,pi_ss = general_M(param_true)
+
+plt.figure(figsize=(10, 8))
+plt.subplot(121)
+plt.imshow(np.abs(M-M_)/M)
+plt.colorbar(orientation='horizontal', pad=0.1)
+plt.title('|M_true-M_inferred|/M',fontsize=20)
+plt.subplot(122)
+plt.plot(pi_ss,label='true')
+plt.plot(pi_ss_,'--', label='inferred')
+plt.legend(fontsize=20)
+plt.title('P_steady',fontsize=20)
+
+# %% plot flux
+flux_true = edge_flux_inf(param_true)
+flux_infer = edge_flux_inf(frw_inf)
+plt.figure()
+plt.plot(flux_true.reshape(-1), flux_infer.reshape(-1), '.')
+plt.title('edge flux',fontsize=20)
+
+# %%
+print(param_true[:N])
+print(frw_inf[:N])
 
 # %%
 ###############################################################################
