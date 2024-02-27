@@ -285,7 +285,7 @@ bounds = [(.0, 100)]*len(param_true)
 # Perform optimization using SLSQP method
 P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
-np.fill_diagonal(P0, np.sum(P0,1))
+np.fill_diagonal(P0, -np.sum(P0,1))
 # param0 = (np.random.rand(N),  np.random.rand(N*2*N-N))
 param0 = np.random.rand(num_params)*1 + param_true*0
 # param0 = frw_inf*1
