@@ -115,6 +115,11 @@ time_step = 1  # check with Peter if this is ok... THIS is OK
 M,pi_ss = param2M(param_true)
 states, times = sim_Q(M, total_time, time_step)
 
+# %%
+################################
+# times = spk_times*1 # = np.where(np.abs(trans_temp)>0)[0]  # spike timing
+# states = spk_states*1 # = states_spk[spk_times] 
+################################
 # %% counting and ranking analysis
 def compute_tauC(states, times, nc=nc):
     """
@@ -249,7 +254,7 @@ while ii < target_dof:
     bounds = [(.0, 100)]*len(param_true)
 
     # Perform optimization using SLSQP method
-    param0 = np.ones(num_params) + np.random.rand(num_params)*0 + param_true*0
+    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0 + param_true*0
     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
     
     # computed and record the corresponding KL
