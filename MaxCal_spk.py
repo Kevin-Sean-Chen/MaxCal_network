@@ -24,17 +24,20 @@ a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.08*ri))
 b = np.concatenate((0.2*np.ones(Ne), 0.25-0.05*ri))
 c = np.concatenate((-65+15*re**2 , -65*np.ones(Ni)))
 d = np.concatenate((8-6*re**2 , 2*np.ones(Ni)))
-S = np.concatenate((0.5*np.random.rand(Ne+Ni, Ne), -np.random.rand(Ne+Ni, Ni)), axis=1)
+S = np.concatenate((0.5*np.random.rand(Ne+Ni, Ne), -np.random.rand(Ne+Ni, Ni)), axis=1)*50
+np.fill_diagonal(S, np.zeros(N))  # remove self-coupling
 v = -65*np.ones(Ne+Ni)
 u = b*v
 firing = []#np.zeros((lt,2))
 for tt in range(lt):
-    I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))
+    I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
     fired = np.where(v>=30)[0]
     firing.append([tt+0*fired, fired])
     v[fired] = c[fired]
     u[fired] = u[fired] + d[fired]
-    I = I + np.sum(S[:,fired])
+    if len(fired)>0:
+        for ii in range(len(fired)):
+            I = I + S[:,fired[ii]]
     v = v + 0.5*(0.04*v**2 + 5*v + 140 - u + I) # step 0.5 ms
     v = v + 0.5*(0.04*v**2 + 5*v + 140 - u + I) # for numerical
     u = u + a*(b*v - u) # stability
@@ -61,7 +64,7 @@ print(min_isi)
 # %%
 # scan through spikes to find smallest step
 # sliding window to compute tau and C
-def spk2statetime(firing, window=20, N=N):
+def spk2statetime(firing, window=50, N=N):
     """
     given the firing (time and neuron that fired) data, we choose time window to slide through,
     then convert to network states and the timing of transition
@@ -85,7 +88,7 @@ def spk2statetime(firing, window=20, N=N):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing)
+spk_states, spk_times = spk2statetime(firing, window=5)
 plt.figure()
 plt.plot(spk_states)
 
@@ -95,6 +98,11 @@ plt.plot(spk_states)
 # check how to interpret higher-order w_ijk -> response curve!
 # come back to thinkig about the time window
 #... retina!!
+
+###############################################################################
+# IMPORTANT
+# find a bin/window method that guarantees CTMC transitions!
+###############################################################################
 
 # %% CTMC setup
 # N = 3  # number of neurons
@@ -292,6 +300,10 @@ plt.imshow(M_inf, aspect='auto')
 plt.colorbar()
 
 # %%
+param_order = np.arange(1, len(param_temp)+1)
+M_order,_ = param2M(param_order)
+
+# %%
 # M = np.array([[0,    f3,   f2,   0,              f1,   0,               0,               0],
 #               [r3,   0,    0,    f2*np.exp(w32), 0,    f1*np.exp(w31),  0,               0],
 #               [r2,   0,    0,    f3*np.exp(w23), 0,    0,               f1*np.exp(w21),  0],
@@ -307,10 +319,15 @@ w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1
 
 bar_width = 0.35
 bar_positions_group1 = np.arange(6)
-bar_positions_group2 = bar_positions_group1 + bar_width
+bar_positions_group2 = bar_positions_group1 + bar_width*0
 plt.figure()
+plt.subplot(211)
+# plt.bar(bar_positions_group1,[S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]],width=bar_width)
 plt.bar(bar_positions_group1,[S[0,1],S[0,2],S[1,0],S[1,2],S[2,1],S[2,0]],width=bar_width)
-plt.bar(bar_positions_group2,[w12,w31,w21,w23,w32,w31],width=bar_width)
+plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
+plt.subplot(212)
+plt.bar(bar_positions_group2,[w12,w13,w21,w23,w32,w31],width=bar_width)
+plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
 
 # %%
 # # Simulation parameters
