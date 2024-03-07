@@ -14,23 +14,28 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 # %% Izhikevich spiking circuit
-lt = 10000
+lt = 20000
 Ne = 2  # 2 excitation
 Ni = 1  # 1 inhibition
 N = Ne + Ni
 re = np.random.rand(Ne)
 ri = np.random.rand(Ni)
-a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.08*ri))
-b = np.concatenate((0.2*np.ones(Ne), 0.25-0.05*ri))
-c = np.concatenate((-65+15*re**2 , -65*np.ones(Ni)))
-d = np.concatenate((8-6*re**2 , 2*np.ones(Ni)))
-S = np.concatenate((0.5*np.random.rand(Ne+Ni, Ne), -np.random.rand(Ne+Ni, Ni)), axis=1)*50
+# a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.08*ri))
+# b = np.concatenate((0.2*np.ones(Ne), 0.25-0.05*ri))
+# c = np.concatenate((-65+15*re**2 , -65*np.ones(Ni)))
+# d = np.concatenate((8-6*re**2 , 2*np.ones(Ni)))
+a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.0*ri))
+b = np.concatenate((0.2*np.ones(Ne), 0.2-0.0*ri))
+c = np.concatenate((-65+15*re**2*0 , -65*np.ones(Ni)))
+d = np.concatenate((8-6*re**2*0 , 8*np.ones(Ni)))
+S = np.concatenate((5*np.random.rand(Ne+Ni, Ne), 5*-np.random.rand(Ne+Ni, Ni)), axis=1)*20
 np.fill_diagonal(S, np.zeros(N))  # remove self-coupling
 v = -65*np.ones(Ne+Ni)
 u = b*v
 firing = []#np.zeros((lt,2))
 for tt in range(lt):
-    I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
+    # I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
+    I = np.concatenate((1*np.random.randn(Ne) , 1*np.random.randn(Ni)))*4
     fired = np.where(v>=30)[0]
     firing.append([tt+0*fired, fired])
     v[fired] = c[fired]
@@ -55,22 +60,23 @@ for nn in range(N):
         if len(firing[tt][0])>0 and len(firing[tt][0])<2 and firing[tt][1]==nn:
             spk_i.append(firing[tt][0])
         elif len(firing[tt][0])>1:  # if we happen to have synchronous spike breaking CTMC!
-            spk_i.append(np.array([firing[tt][0][0]]))  # random for the first one~
+            spk_i.append(np.array([firing[tt][0][0]]))  # random for the first one!!??
     spk_i = np.array(spk_i).squeeze()
     isi[nn] = np.min(np.diff(spk_i))
 min_isi = np.min(isi)
 print(min_isi)
 
+spins = [0,1]  # binary patterns
+combinations = list(itertools.product(spins, repeat=N))  # possible configurations
+
 # %%
 # scan through spikes to find smallest step
 # sliding window to compute tau and C
-def spk2statetime(firing, window=50, N=N):
+def spk2statetime(firing, window, N=N, combinations=combinations):
     """
     given the firing (time and neuron that fired) data, we choose time window to slide through,
     then convert to network states and the timing of transition
     """
-    spins = [0,1]  # binary patterns
-    combinations = list(itertools.product(spins, repeat=N))  # possible configurations
     states_spk = np.zeros(lt-window)
     for tt in range(lt-window):
         this_window = firing[tt:tt+window]
@@ -88,7 +94,7 @@ def spk2statetime(firing, window=50, N=N):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=5)
+spk_states, spk_times = spk2statetime(firing, window=20)
 plt.figure()
 plt.plot(spk_states)
 
@@ -110,14 +116,12 @@ num_params = int((N*2**N))  # number of parameters in model without refractory a
 nc = 2**N  # number of total states of 3-neuron
 
 # %% counting and ranking analysis
-def param2M(param, N=N):
+def param2M(param, N=N, combinations=combinations):
     """
     given array of parameters with length N*2**N, network size N, return transition matrix
     the matrix is a general CTMC form for 
     """
     nc = 2**N  # number of states
-    spins = [0,1]  # binary patterns
-    combinations = list(itertools.product(spins, repeat=N))  # possible configurations
     
     ### idea: M = mask*FR, with mask for ctmc, FR is the rest of the transitions
     mask = np.ones((nc,nc))  # initialize the tilted matrix
@@ -147,7 +151,7 @@ def param2M(param, N=N):
     
     return M, np.real(pi_ss)
 
-def compute_tauC(states, times, nc=nc):
+def compute_tauC(states, times, nc=nc, combinations=combinations):
     """
     given the emperically measured states, measure occupency tau and the transitions C
     """
@@ -162,7 +166,8 @@ def compute_tauC(states, times, nc=nc):
     for t in range(len(states)-1):
         ii,jj = states[t], states[t+1]
         if ii != jj:
-            C[ii,jj] += 1  ### counting the transtion
+            if sum(x != y for x, y in zip(combinations[ii], combinations[jj])) == 1:  # ignore those not CTMC for now!
+                C[ii,jj] += 1  ### counting the transtion
     return tau, C    
 
 tau,C = compute_tauC(spk_states, spk_times)  # emperical measurements
@@ -272,10 +277,10 @@ while ii < target_dof:
     
     ### run max-cal!
     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-    bounds = [(.0, 100)]*num_params
+    bounds = [(.0, 1)]*num_params
 
     # Perform optimization using SLSQP method
-    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0
+    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.1
     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
     
     # computed and record the corresponding KL
@@ -313,17 +318,24 @@ M_order,_ = param2M(param_order)
 #               [0,    0,    r1,   0,              r2,   0,               0,               f3*np.exp(w123)],
 #               [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
 
+def invf(x):
+    output = np.log(x)
+    # output = np.log(-1+np.exp(-x))
+    return output
+
 f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
-w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
-w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
+# w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
+# w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
+w12,w13,w21 = invf(M_inf[4,6]/f2), invf(M_inf[4,5]/f3), invf(M_inf[2,6]/f1)
+w23,w32,w31 = invf(M_inf[2,3]/f3), invf(M_inf[1,3]/f2), invf(M_inf[1,5]/f1)
 
 bar_width = 0.35
 bar_positions_group1 = np.arange(6)
 bar_positions_group2 = bar_positions_group1 + bar_width*0
 plt.figure()
 plt.subplot(211)
-# plt.bar(bar_positions_group1,[S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]],width=bar_width)
-plt.bar(bar_positions_group1,[S[0,1],S[0,2],S[1,0],S[1,2],S[2,1],S[2,0]],width=bar_width)
+plt.bar(bar_positions_group1,[S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]],width=bar_width)
+# plt.bar(bar_positions_group1,[S[0,1],S[0,2],S[1,0],S[1,2],S[2,1],S[2,0]],width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
 plt.subplot(212)
 plt.bar(bar_positions_group2,[w12,w13,w21,w23,w32,w31],width=bar_width)
