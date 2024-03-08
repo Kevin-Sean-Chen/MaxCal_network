@@ -14,7 +14,7 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 # %% Izhikevich spiking circuit
-lt = 20000
+lt = 30000
 Ne = 2  # 2 excitation
 Ni = 1  # 1 inhibition
 N = Ne + Ni
@@ -28,10 +28,13 @@ a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.0*ri))
 b = np.concatenate((0.2*np.ones(Ne), 0.2-0.0*ri))
 c = np.concatenate((-65+15*re**2*0 , -65*np.ones(Ni)))
 d = np.concatenate((8-6*re**2*0 , 8*np.ones(Ni)))
-S = np.concatenate((5*np.random.rand(Ne+Ni, Ne), 5*-np.random.rand(Ne+Ni, Ni)), axis=1)*20
+S = np.concatenate((5*np.random.rand(Ne+Ni, Ne), 10*-np.random.rand(Ne+Ni, Ni)), axis=1)*10
 np.fill_diagonal(S, np.zeros(N))  # remove self-coupling
 v = -65*np.ones(Ne+Ni)
 u = b*v
+dt = 0.5
+tau_s = 10
+I = np.zeros(N)
 firing = []#np.zeros((lt,2))
 for tt in range(lt):
     # I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
@@ -40,16 +43,104 @@ for tt in range(lt):
     firing.append([tt+0*fired, fired])
     v[fired] = c[fired]
     u[fired] = u[fired] + d[fired]
+    dI = np.zeros(N)
     if len(fired)>0:
-        for ii in range(len(fired)):
-            I = I + S[:,fired[ii]]
-    v = v + 0.5*(0.04*v**2 + 5*v + 140 - u + I) # step 0.5 ms
-    v = v + 0.5*(0.04*v**2 + 5*v + 140 - u + I) # for numerical
+        for ii in range(len(fired)):  # identifying synaptic input in one step
+            I = I + S[:,fired[ii]]*1
+            # dI = dI + S[:,fired[ii]]
+    # I = I + dt*(-I/tau_s +  dI)  # filtering
+    v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) #+ I_th # step 0.5 ms
+    v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) # for numerical
     u = u + a*(b*v - u) # stability
 
 plt.figure()
 for tt in range(lt):
     plt.plot(firing[tt][0], firing[tt][1],'k.')
+
+# %% LIF model
+# Simulation parameters
+dt = 0.1  # time step in milliseconds
+timesteps = 30000  # total simulation steps
+lt = timesteps*1
+
+# Neuron parameters
+tau = 10.0  # membrane time constant
+v_rest = -65.0  # resting membrane potential
+v_threshold = -50.0  # spike threshold
+v_reset = -65.0  # reset potential after a spike
+
+# Synaptic weight matrix
+synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
+                             [1, 0, -2],  # Neuron 1 connections
+                             [1, 1, 0]])*10  #20  # Neuron 2 connections
+S = synaptic_weights*1
+# synaptic_weights = np.random.randn(3,3)*.8
+noise_amp = 2
+
+# Synaptic filtering parameters
+tau_synaptic = 5.0  # synaptic time constant
+
+# Initialize neuron membrane potentials and synaptic inputs
+v_neurons = np.zeros((3, timesteps))
+synaptic_inputs = np.zeros((3, timesteps))
+spike_times = []
+firing = []
+firing.append((np.array([]), np.array([]))) # init
+
+# Simulation loop
+for t in range(1, timesteps):
+
+    # Update neuron membrane potentials using leaky integrate-and-fire model
+    v_neurons[:, t] = v_neurons[:, t - 1] + dt/tau*(v_rest - v_neurons[:, t - 1]) + np.random.randn(3)*noise_amp
+    
+    # Check for spikes
+    spike_indices = np.where(v_neurons[:, t] > v_threshold)[0]
+    
+    # Apply synaptic connections with synaptic filtering
+    synaptic_inputs[:, t] = synaptic_inputs[:, t-1] + dt*( \
+                            -synaptic_inputs[:, t-1]/tau_synaptic + np.sum(synaptic_weights[:, spike_indices], axis=1))
+    # synaptic_inputs[:, t] = np.sum(synaptic_weights[:, spike_indices], axis=1)
+    # Update membrane potentials with synaptic inputs
+    v_neurons[:, t] += synaptic_inputs[:, t]*dt
+    
+    # record firing
+    firing.append([t+0*spike_indices, spike_indices])
+    
+    # reset and record spikes
+    v_neurons[spike_indices, t] = v_reset  # Reset membrane potential for neurons that spiked
+    if len(spike_indices) > 0:
+        spike_times.append(t * dt)
+    
+
+# Plotting
+plt.figure(figsize=(10, 5))
+for i in range(3):
+    plt.plot(np.arange(timesteps) * dt, v_neurons[i, :], label=f'Neuron {i}')
+
+plt.scatter(spike_times, np.ones_like(spike_times) * v_threshold, color='red', marker='o', label='Spikes')
+plt.xlabel('Time (ms)')
+plt.ylabel('Membrane Potential')
+plt.title('Neural Circuit Simulation')
+plt.legend()
+plt.show()
+
+plt.figure()
+for tt in range(timesteps-1):
+    plt.plot(firing[tt][0], firing[tt][1],'k.')
+
+# %% bursting analysis
+allspktime = []
+for tt in range(timesteps-1):
+    allspktime.append(firing[tt][0])
+allspktime = np.concatenate(allspktime).squeeze()
+isi = np.diff(allspktime)
+plt.figure()
+aa,bb = np.histogram(isi,30)
+plt.plot(bb[1:],aa,'-o')
+# plt.yscale('log')
+
+# %% with Firing data in hand...
+###############################################################################
 
 # %% extract spike time per neuron... can later check ISI distribution
 isi = np.zeros(N)
@@ -83,7 +174,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
         word = np.zeros(N)  # template for the binary word
         for ti in range(window): # in time
             if len(this_window[ti][1])>0:
-                this_neuron = this_window[ti][1][0]  # the neuron that fired
+                this_neuron = this_window[ti][1][0]  # the neuron that fired first
                 word[this_neuron] = 1
         state_id = combinations.index(tuple(word))
         states_spk[tt] = state_id
@@ -94,7 +185,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=20)
+spk_states, spk_times = spk2statetime(firing, window=100)
 plt.figure()
 plt.plot(spk_states)
 
@@ -171,6 +262,11 @@ def compute_tauC(states, times, nc=nc, combinations=combinations):
     return tau, C    
 
 tau,C = compute_tauC(spk_states, spk_times)  # emperical measurements
+
+# %% new tau C computation from firing
+def firing2tauC(firing):
+    
+    return tau, C
 
 # %% computing statistics for infinite data given parameter
 def P_frw_ctmc(param):
@@ -277,10 +373,10 @@ while ii < target_dof:
     
     ### run max-cal!
     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-    bounds = [(.0, 1)]*num_params
+    bounds = [(.0, 100)]*num_params
 
     # Perform optimization using SLSQP method
-    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.1
+    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
     
     # computed and record the corresponding KL
@@ -305,10 +401,9 @@ plt.imshow(M_inf, aspect='auto')
 plt.colorbar()
 
 # %%
-param_order = np.arange(1, len(param_temp)+1)
-M_order,_ = param2M(param_order)
+# param_order = np.arange(1, len(param_temp)+1)
+# M_order,_ = param2M(param_order)
 
-# %%
 # M = np.array([[0,    f3,   f2,   0,              f1,   0,               0,               0],
 #               [r3,   0,    0,    f2*np.exp(w32), 0,    f1*np.exp(w31),  0,               0],
 #               [r2,   0,    0,    f3*np.exp(w23), 0,    0,               f1*np.exp(w21),  0],
@@ -338,63 +433,56 @@ plt.bar(bar_positions_group1,[S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]],width=b
 # plt.bar(bar_positions_group1,[S[0,1],S[0,2],S[1,0],S[1,2],S[2,1],S[2,0]],width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
 plt.subplot(212)
-plt.bar(bar_positions_group2,[w12,w13,w21,w23,w32,w31],width=bar_width)
+plt.bar(bar_positions_group2,np.array([w12,w13,w21,w23,w32,w31])+0,width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
 
+
 # %%
-# # Simulation parameters
-# dt = 0.1  # time step in milliseconds
-# timesteps = 1000  # total simulation steps
+def sim_Q(Q, total_time, time_step):
+    """
+    Simulate Markov chain given rate matrix Q, time length and steps
+    reading this: https://www.columbia.edu/~ww2040/6711F13/CTMCnotes120413.pdf
+    """
+    nc = Q.shape[0]
+    initial_state = np.random.randint(nc) # uniform to begin with
+    states = [initial_state]
+    times = [0.0]
 
-# # Neuron parameters
-# tau = 10.0  # membrane time constant
-# v_rest = -65.0  # resting membrane potential
-# v_threshold = -50.0  # spike threshold
-# v_reset = -65.0  # reset potential after a spike
+    current_state = initial_state
+    current_time = 0.0
 
-# # Synaptic weight matrix
-# synaptic_weights = np.array([[0, 1, -1],  # Neuron 0 connections
-#                              [5, 0, 5],  # Neuron 1 connections
-#                              [-2, 3, 0]])*30 # Neuron 2 connections
-# # synaptic_weights = np.random.randn(3,3)*.8
+    while current_time < total_time:
+        rate = -Q[current_state, current_state]
+        next_time = current_time + np.random.exponential(scale=1/rate)
+        if next_time > total_time:
+            break
 
-# # Synaptic filtering parameters
-# tau_synaptic = 2.0  # synaptic time constant
+        transition_probabilities = Q[current_state,:]*1#expm(Q * (next_time - current_time))[current_state, :]
+        transition_probabilities[current_state] = 0  # remove diagonal
+        transition_probabilities /= transition_probabilities.sum()  # Normalize probabilities
+        next_state = np.random.choice(len(Q), p=transition_probabilities)
+        # print(transition_probabilities)
+        
+        #####
+        # # Generate exponentially distributed time until the next event 
+        # rate = abs(Q[current_state, current_state]) 
+        # time_to_next_event = np.random.exponential(scale=1/rate) # Update the time and state 
+        # time_points.append(time_points[-1] + time_to_next_event) # Determine the next state based on transition probabilities 
+        # transition_probs = Q[current_state, :] / rate transition_probs[transition_probs < 0] = 0  # Ensure non-negative probabilities 
+        # transition_probs /= np.sum(transition_probs)  # Normalize probabilities to sum to 1 
+        # next_state = np.random.choice(len(Q), p=transition_probs) 
+        # state_sequence.append(next_state)
+        #####
+        
+        states.append(next_state)
+        times.append(next_time)
 
-# # Initialize neuron membrane potentials and synaptic inputs
-# v_neurons = np.zeros((3, timesteps))
-# synaptic_inputs = np.zeros((3, timesteps))
-# spike_times = []
+        current_state = next_state
+        current_time = next_time
 
-# # Simulation loop
-# for t in range(1, timesteps):
+    return np.array(states), np.array(times)
 
-#     # Update neuron membrane potentials using leaky integrate-and-fire model
-#     v_neurons[:, t] = v_neurons[:, t - 1] + dt/tau*(v_rest - v_neurons[:, t - 1]) + np.random.randn(3)*.5
-    
-#     # Check for spikes
-#     spike_indices = np.where(v_neurons[:, t] > v_threshold)[0]
-    
-#     # Apply synaptic connections with synaptic filtering
-#     synaptic_inputs[:, t] = synaptic_inputs[:, t-1] + dt*( \
-#                             -synaptic_inputs[:, t-1]/tau_synaptic + np.sum(synaptic_weights[:, spike_indices], axis=1))
+total_time = 10000
+time_step = 1  # check with Peter if this is ok... THIS is OK
+states_sim, times_sim = sim_Q(M_inf, total_time, time_step)
 
-#     # Update membrane potentials with synaptic inputs
-#     v_neurons[:, t] += synaptic_inputs[:, t]*dt
-    
-#     # reset and record spikes
-#     v_neurons[spike_indices, t] = v_reset  # Reset membrane potential for neurons that spiked
-#     if len(spike_indices) > 0:
-#         spike_times.append(t * dt)
-
-# # Plotting
-# plt.figure(figsize=(10, 5))
-# for i in range(3):
-#     plt.plot(np.arange(timesteps) * dt, v_neurons[i, :], label=f'Neuron {i}')
-
-# plt.scatter(spike_times, np.ones_like(spike_times) * v_threshold, color='red', marker='o', label='Spikes')
-# plt.xlabel('Time (ms)')
-# plt.ylabel('Membrane Potential')
-# plt.title('Neural Circuit Simulation')
-# plt.legend()
-# plt.show()
