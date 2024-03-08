@@ -13,52 +13,10 @@ import matplotlib
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
-# %% Izhikevich spiking circuit
-lt = 30000
-Ne = 2  # 2 excitation
-Ni = 1  # 1 inhibition
-N = Ne + Ni
-re = np.random.rand(Ne)
-ri = np.random.rand(Ni)
-# a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.08*ri))
-# b = np.concatenate((0.2*np.ones(Ne), 0.25-0.05*ri))
-# c = np.concatenate((-65+15*re**2 , -65*np.ones(Ni)))
-# d = np.concatenate((8-6*re**2 , 2*np.ones(Ni)))
-a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.0*ri))
-b = np.concatenate((0.2*np.ones(Ne), 0.2-0.0*ri))
-c = np.concatenate((-65+15*re**2*0 , -65*np.ones(Ni)))
-d = np.concatenate((8-6*re**2*0 , 8*np.ones(Ni)))
-S = np.concatenate((5*np.random.rand(Ne+Ni, Ne), 10*-np.random.rand(Ne+Ni, Ni)), axis=1)*10
-np.fill_diagonal(S, np.zeros(N))  # remove self-coupling
-v = -65*np.ones(Ne+Ni)
-u = b*v
-dt = 0.5
-tau_s = 10
-I = np.zeros(N)
-firing = []#np.zeros((lt,2))
-for tt in range(lt):
-    # I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
-    I = np.concatenate((1*np.random.randn(Ne) , 1*np.random.randn(Ni)))*4
-    fired = np.where(v>=30)[0]
-    firing.append([tt+0*fired, fired])
-    v[fired] = c[fired]
-    u[fired] = u[fired] + d[fired]
-    dI = np.zeros(N)
-    if len(fired)>0:
-        for ii in range(len(fired)):  # identifying synaptic input in one step
-            I = I + S[:,fired[ii]]*1
-            # dI = dI + S[:,fired[ii]]
-    # I = I + dt*(-I/tau_s +  dI)  # filtering
-    v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) #+ I_th # step 0.5 ms
-    v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) # for numerical
-    u = u + a*(b*v - u) # stability
-
-plt.figure()
-for tt in range(lt):
-    plt.plot(firing[tt][0], firing[tt][1],'k.')
 
 # %% LIF model
 # Simulation parameters
+N = 3
 dt = 0.1  # time step in milliseconds
 timesteps = 30000  # total simulation steps
 lt = timesteps*1
@@ -72,7 +30,7 @@ v_reset = -65.0  # reset potential after a spike
 # Synaptic weight matrix
 synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
-                             [1, 1, 0]])*10  #20  # Neuron 2 connections
+                             [1, 1, 0]])*20  #20  # Neuron 2 connections
 S = synaptic_weights*1
 # synaptic_weights = np.random.randn(3,3)*.8
 noise_amp = 2
@@ -200,6 +158,11 @@ plt.plot(spk_states)
 # IMPORTANT
 # find a bin/window method that guarantees CTMC transitions!
 ###############################################################################
+###
+# phase portait of W strength vs. noise strength, and measure correlation of reconstruction
+# play with motif
+# download retina
+###
 
 # %% CTMC setup
 # N = 3  # number of neurons
@@ -486,3 +449,47 @@ total_time = 10000
 time_step = 1  # check with Peter if this is ok... THIS is OK
 states_sim, times_sim = sim_Q(M_inf, total_time, time_step)
 
+# %%
+# %% Izhikevich spiking circuit
+# lt = 30000
+# Ne = 2  # 2 excitation
+# Ni = 1  # 1 inhibition
+# N = Ne + Ni
+# re = np.random.rand(Ne)
+# ri = np.random.rand(Ni)
+# # a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.08*ri))
+# # b = np.concatenate((0.2*np.ones(Ne), 0.25-0.05*ri))
+# # c = np.concatenate((-65+15*re**2 , -65*np.ones(Ni)))
+# # d = np.concatenate((8-6*re**2 , 2*np.ones(Ni)))
+# a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.0*ri))
+# b = np.concatenate((0.2*np.ones(Ne), 0.2-0.0*ri))
+# c = np.concatenate((-65+15*re**2*0 , -65*np.ones(Ni)))
+# d = np.concatenate((8-6*re**2*0 , 8*np.ones(Ni)))
+# S = np.concatenate((5*np.random.rand(Ne+Ni, Ne), 10*-np.random.rand(Ne+Ni, Ni)), axis=1)*10
+# np.fill_diagonal(S, np.zeros(N))  # remove self-coupling
+# v = -65*np.ones(Ne+Ni)
+# u = b*v
+# dt = 0.5
+# tau_s = 10
+# I = np.zeros(N)
+# firing = []#np.zeros((lt,2))
+# for tt in range(lt):
+#     # I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
+#     I = np.concatenate((1*np.random.randn(Ne) , 1*np.random.randn(Ni)))*4
+#     fired = np.where(v>=30)[0]
+#     firing.append([tt+0*fired, fired])
+#     v[fired] = c[fired]
+#     u[fired] = u[fired] + d[fired]
+#     dI = np.zeros(N)
+#     if len(fired)>0:
+#         for ii in range(len(fired)):  # identifying synaptic input in one step
+#             I = I + S[:,fired[ii]]*1
+#             # dI = dI + S[:,fired[ii]]
+#     # I = I + dt*(-I/tau_s +  dI)  # filtering
+#     v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) #+ I_th # step 0.5 ms
+#     v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) # for numerical
+#     u = u + a*(b*v - u) # stability
+
+# plt.figure()
+# for tt in range(lt):
+#     plt.plot(firing[tt][0], firing[tt][1],'k.')
