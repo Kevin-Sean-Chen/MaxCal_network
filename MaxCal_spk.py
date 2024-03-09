@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import itertools
 from scipy.optimize import minimize
+from scipy.stats import pearsonr
 import matplotlib 
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
@@ -31,9 +32,13 @@ v_reset = -65.0  # reset potential after a spike
 synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
                              [1, 1, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = (np.random.rand(3,3)+1)*20
+# sign = np.random.randn(3,3); sign[sign>0]=1; sign[sign<0] = -1
+# synaptic_weights = synaptic_weights*sign
 S = synaptic_weights*1
+np.fill_diagonal(S, np.zeros(3))
 # synaptic_weights = np.random.randn(3,3)*.8
-noise_amp = 2
+noise_amp = 16
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant
@@ -143,7 +148,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=100)
+spk_states, spk_times = spk2statetime(firing, window=20)
 plt.figure()
 plt.plot(spk_states)
 
@@ -399,6 +404,15 @@ plt.subplot(212)
 plt.bar(bar_positions_group2,np.array([w12,w13,w21,w23,w32,w31])+0,width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
 
+
+inf_w = np.array([w12,w13,w21,w23,w32,w31])
+true_s = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
+plt.figure()
+plt.plot(inf_w, true_s,'o')
+
+
+correlation_coefficient, _ = pearsonr(inf_w, true_s)
+print(correlation_coefficient)
 
 # %%
 def sim_Q(Q, total_time, time_step):
