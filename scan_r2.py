@@ -7,6 +7,7 @@ Created on Sat Mar  9 16:04:55 2024
 
 from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint, objective_param, compute_min_isi
 
+import scipy.io
 import numpy as np
 from matplotlib import pyplot as plt
 import itertools
@@ -97,7 +98,7 @@ np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, -np.sum(P0,1))
 dofs_all = nc**2 + nc
 Cp_condition = np.ones(dofs_all)
-Cp_condition[16:] = np.zeros(dofs_all-16)
+Cp_condition[16:] = np.zeros(dofs_all-16) # test with low-d dof constraints!!!
 
 for ww in range(len(w_s)):
     for nn in range(len(n_s)):
@@ -105,8 +106,7 @@ for ww in range(len(w_s)):
         S = Wij*w_s[ww]
         firing = LIF_firing(S, n_s[nn])
         minisi = compute_min_isi(firing)
-        # adapt_window = int(minisi*10)
-        adapt_window = 100
+        adapt_window = int(minisi*10)  #100
         spk_states, spk_times = spk2statetime(firing, adapt_window)  # embedding states
         tau,C = compute_tauC(spk_states, spk_times)  # emperical measurements
         ### not scanning for now...
@@ -148,6 +148,6 @@ plt.title('R2 (dof:16)', fontsize=20)
 # alter window according to ISI in data
 # early cutoff for constraints!
 #... next:
-# play with motif
+# play with motif (cyclic and mutual inhibition)
 # download retina
 

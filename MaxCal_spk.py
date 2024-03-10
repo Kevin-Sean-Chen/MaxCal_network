@@ -29,16 +29,22 @@ v_threshold = -50.0  # spike threshold
 v_reset = -65.0  # reset potential after a spike
 
 # Synaptic weight matrix
+# E-I balanced circuit
 synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
                              [1, 1, 0]])*20  #20  # Neuron 2 connections
+# cyclic circuit
+synaptic_weights = np.array([[0, 1, -1],  # Neuron 0 connections
+                             [-1, 0, 1],  # Neuron 1 connections
+                             [1, -1, 0]])*20  #20  # Neuron 2 connections
+# random circuit
 # synaptic_weights = (np.random.rand(3,3)+1)*20
 # sign = np.random.randn(3,3); sign[sign>0]=1; sign[sign<0] = -1
 # synaptic_weights = synaptic_weights*sign
 S = synaptic_weights*1
 np.fill_diagonal(S, np.zeros(3))
 # synaptic_weights = np.random.randn(3,3)*.8
-noise_amp = 16
+noise_amp = 2
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant
@@ -148,7 +154,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=20)
+spk_states, spk_times = spk2statetime(firing, window=100)
 plt.figure()
 plt.plot(spk_states)
 
