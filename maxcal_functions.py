@@ -27,7 +27,7 @@ combinations = list(itertools.product(spins, repeat=N))  # possible configuratio
 lt = 30000
 
 # %%
-def spk2statetime(firing, window, N=N, combinations=combinations):
+def spk2statetime(firing, window, lt=lt, N=N, combinations=combinations):
     """
     given the firing (time and neuron that fired) data, we choose time window to slide through,
     then convert to network states and the timing of transition

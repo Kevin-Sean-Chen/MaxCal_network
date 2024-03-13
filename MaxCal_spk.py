@@ -19,7 +19,7 @@ matplotlib.rc('ytick', labelsize=20)
 # Simulation parameters
 N = 3
 dt = 0.1  # time step in milliseconds
-timesteps = 30000  # total simulation steps
+timesteps = 50000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
@@ -34,9 +34,9 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
                              [1, 1, 0]])*20  #20  # Neuron 2 connections
 # cyclic circuit
-synaptic_weights = np.array([[0, 1, -1],  # Neuron 0 connections
-                             [-1, 0, 1],  # Neuron 1 connections
-                             [1, -1, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = np.array([[0, 1, -1],  # Neuron 0 connections
+#                               [-1, 0, 1],  # Neuron 1 connections
+#                               [1, -1, 0]])*20  #20  # Neuron 2 connections
 # random circuit
 # synaptic_weights = (np.random.rand(3,3)+1)*20
 # sign = np.random.randn(3,3); sign[sign>0]=1; sign[sign<0] = -1
@@ -154,7 +154,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=100)
+spk_states, spk_times = spk2statetime(firing, window=150)
 plt.figure()
 plt.plot(spk_states)
 
@@ -420,54 +420,22 @@ plt.plot(inf_w, true_s,'o')
 correlation_coefficient, _ = pearsonr(inf_w, true_s)
 print(correlation_coefficient)
 
-# %%
-def sim_Q(Q, total_time, time_step):
-    """
-    Simulate Markov chain given rate matrix Q, time length and steps
-    reading this: https://www.columbia.edu/~ww2040/6711F13/CTMCnotes120413.pdf
-    """
-    nc = Q.shape[0]
-    initial_state = np.random.randint(nc) # uniform to begin with
-    states = [initial_state]
-    times = [0.0]
+# %% check biophysical correspondence
+### (0, fi), (wji, fiewji ), (wki, fiewki ), (wji + wki, fiewjk,i )
 
-    current_state = initial_state
-    current_time = 0.0
+plt.figure()
+ws = np.array([0, w21, w31, w21+w31])
+phis = np.array([f1, M_inf[2,6], M_inf[1,5], M_inf[3,7]])
+plt.plot(ws, phis,'o')
+ws = np.array([0, w12, w32, w12+w32])
+phis = np.array([f2, M_inf[4,6], M_inf[1,3], M_inf[5,7]])
+plt.plot(ws, phis,'o')
+ws = np.array([0, w13, w23, w13+w23])
+phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
+plt.plot(ws, phis,'o')
+plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20)
 
-    while current_time < total_time:
-        rate = -Q[current_state, current_state]
-        next_time = current_time + np.random.exponential(scale=1/rate)
-        if next_time > total_time:
-            break
 
-        transition_probabilities = Q[current_state,:]*1#expm(Q * (next_time - current_time))[current_state, :]
-        transition_probabilities[current_state] = 0  # remove diagonal
-        transition_probabilities /= transition_probabilities.sum()  # Normalize probabilities
-        next_state = np.random.choice(len(Q), p=transition_probabilities)
-        # print(transition_probabilities)
-        
-        #####
-        # # Generate exponentially distributed time until the next event 
-        # rate = abs(Q[current_state, current_state]) 
-        # time_to_next_event = np.random.exponential(scale=1/rate) # Update the time and state 
-        # time_points.append(time_points[-1] + time_to_next_event) # Determine the next state based on transition probabilities 
-        # transition_probs = Q[current_state, :] / rate transition_probs[transition_probs < 0] = 0  # Ensure non-negative probabilities 
-        # transition_probs /= np.sum(transition_probs)  # Normalize probabilities to sum to 1 
-        # next_state = np.random.choice(len(Q), p=transition_probs) 
-        # state_sequence.append(next_state)
-        #####
-        
-        states.append(next_state)
-        times.append(next_time)
-
-        current_state = next_state
-        current_time = next_time
-
-    return np.array(states), np.array(times)
-
-total_time = 10000
-time_step = 1  # check with Peter if this is ok... THIS is OK
-states_sim, times_sim = sim_Q(M_inf, total_time, time_step)
 
 # %%
 # %% Izhikevich spiking circuit

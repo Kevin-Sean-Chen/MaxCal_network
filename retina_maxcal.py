@@ -21,59 +21,87 @@ matplotlib.rc('ytick', labelsize=20)
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
 dataset = 2  # 0-natural, 1-Brownian, 2-repeats
-nid = 3  # neuron example
-spk_times = mat_data['spike_times'][0][dataset][0][nid].squeeze()
-n_neurons = len(mat_data['spike_times'][0][dataset][0])
-spk_data = mat_data['spike_times'][0][dataset][0]  # extract to use
+nid = 1  # neuron example
+reps = 10 #len(mat_data['spike_times'][0][dataset][0])
+spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
+spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
 
 plt.figure()
-for nn in range(n_neurons):
-    spki = spk_data[nn].squeeze()
-    plt.plot(spki, np.ones(len(spki))+nn,'k.')
+for nn in range(reps):
+    spkt = spk_data[nn].squeeze()
+    spki = spk_ids[nn].squeeze()
+    pos = np.where(spki==nid)[0]
+    plt.plot(spkt[pos], np.ones(len(pos))+nn,'k.')
     
 # %%
 N = 3
-temp = np.arange(0,n_neurons)
-nids = np.random.choice(temp, size=N, replace=False)
+cell_ids = np.unique(spk_ids[0])
+nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three neurons
 
 # check isi
 # the data is spike timing with 10kHz sampling, so .1ms time resolution
-minisi = np.zeros(N)
-max_spk_time = np.zeros(N)
-for ii in range(N):
-    isis = spk_data[nids[ii]].squeeze()
-    max_spk_time[ii] = np.max(isis)
-    isis = np.diff(isis)
-    minisi[ii] = np.min(isis)
+# minisi = np.zeros((N,reps))
+# max_spk_time = np.zeros((N,reps))
+minisi = []; max_spk_time = []
+for nn in range(N):
+    for rr in range(reps):
+        spkt = spk_data[rr].squeeze()
+        spki = spk_ids[rr].squeeze()
+        pos = np.where(spki==nids[nn])[0]
+        spks = spkt[pos]
+        if len(spks)>2:
+            isis = np.diff(spks)
+            max_spk_time.append(np.max(spks))
+            minisi.append(np.min(isis))
     
 minisi_ = np.min(minisi)
 max_lt = np.max(max_spk_time)
 print(minisi_)
 print(max_lt)
 
-# %%
+# %% loop across trial and time and neurons
 dt = 0.1
 lt = int(max_lt/dt)
-firing = []
-firing.append((np.array([]), np.array([])))
+firing_s = []  # across repeats!
 
-for tt in range(lt):
-    spike_indices = np.array([])
-    for nn in range(N):
-        temp_spk = spk_data[nids[nn]].squeeze()
-        find_spk = np.where((temp_spk > tt*dt) & (temp_spk <= tt*dt+dt))[0]
-        if len(find_spk)!=0:
-            spike_indices = np.append(spike_indices, int(nn))
-    firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
+for rr in range(reps):  # repeats
+    firing = []
+    firing.append((np.array([]), np.array([])))
+    
+    for tt in range(lt):  # time
+        spike_indices = np.array([])
+        
+        for nn in range(N):  # neurons
+            spkt = spk_data[rr].squeeze()
+            spki = spk_ids[rr].squeeze()
+            pos = np.where(spki==nids[nn])[0]
+            spks = spkt[pos]
+            find_spk = np.where((spks > tt*dt) & (spks <= tt*dt+dt))[0]
+            if len(find_spk)!=0:
+                spike_indices = np.append(spike_indices, int(nn))
+        firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
+    
+    firing_s.append(firing)
     
 # %% some tests!!
-spk_states, spk_times = spk2statetime(firing, 200)  # embedding states
-tau,C = compute_tauC(spk_states, spk_times)
+spk_state_all = []
+spk_time_all = []
+spk_states, spk_times = spk2statetime(firing_s[0], 200)
+tau_all, C_all = compute_tauC(spk_states, spk_times)
+
+for rr in range(1,reps):
+    spk_states, spk_times = spk2statetime(firing_s[rr], 1000, lt=lt)  # embedding states
+    spk_state_all.append(spk_states)
+    spk_time_all.append(spk_times)
+    
+    tau,C = compute_tauC(spk_states, spk_times)
+    tau_all += tau
+    C_all += C
 
 plt.figure()
 plt.plot(spk_states,'-o')
-print(tau)
-print(C)
+print(tau_all)
+print(C_all)
 
 # %% building constraints
 num_params = int((N*2**N))  # number of parameters in model without refractory assumption
@@ -85,7 +113,7 @@ kls = np.zeros(target_dof) # measure KL
 Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
 rank_tau = np.argsort(tau)[::-1]  # ranking occupency
 rank_C = np.argsort(C.reshape(-1))[::-1]  # ranking transition
-tau_, C_ = tau/lt, C/lt # correct normalization
+tau_, C_ = tau_all/lt/reps, C_all/lt/reps # correct normalization
 observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
 # observations = np.concatenate((C_.reshape(-1), tau_))
 
