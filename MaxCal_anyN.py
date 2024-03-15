@@ -198,21 +198,22 @@ def sim_Q(Q, total_time, time_step):
     return np.array(states), np.array(times)
 
 # %% Max-Cal functions
-def MaxCal_D(Pij, kij0, param):
+def MaxCal_D(kij, kij0, param):
     """
     KL devergence term, with transition Pij and prior rate kij0 as input
     This term can be unstable in log!
     """
-    pi = get_stationary(Pij)
+    pi = get_stationary(kij)
     # kij = Pij / pi[:,None]
     eps = 1e-11
     kl = 0
     n = len(pi)
     for ii in range(n):
         for jj in range(n):
+            Pij = pi[ii]*kij[ii,jj]
             if ii is not jj:
-                kl += Pij[ii,jj]*(np.log(Pij[ii,jj]+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
-                      + pi[ii]*kij0[ii,jj] - Pij[ii,jj]
+                kl += Pij*(np.log(Pij+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
+                      + pi[ii]*kij0[ii,jj] - Pij
     return kl
 
 def get_stationary(M):
@@ -266,8 +267,8 @@ def objective_param(param, kij0):
     """
     objective in the parameter space, using frw and adding extra constraints
     """
-    Pyx,_ = general_M(param)
-    D = MaxCal_D(Pyx, kij0, param)
+    kij,_ = general_M(param)
+    D = MaxCal_D(kij, kij0, param)
     return D
 
 def eq_constraint(param, observations, Cp_condition):

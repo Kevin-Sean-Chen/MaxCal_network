@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import itertools
 from scipy.optimize import minimize
+from scipy.stats import pearsonr
 
 import matplotlib 
 matplotlib.rc('xtick', labelsize=20) 
@@ -19,6 +20,7 @@ matplotlib.rc('ytick', labelsize=20)
 # the setup is the general N*2**N dof matrix
 # rank the order of state sylables
 # scanning through and appending them to make DOF-KL curve for finite data
+# compare KL, correlation, and EP for analytic and finite-data inferences
 
 # %% network setting
 N = 3  # number of neurons
@@ -110,7 +112,7 @@ def sim_Q(Q, total_time, time_step):
 
     return np.array(states), np.array(times)
 
-total_time = 10000
+total_time = 500
 time_step = 1  # check with Peter if this is ok... THIS is OK
 M,pi_ss = param2M(param_true)
 states, times = sim_Q(M, total_time, time_step)
@@ -139,7 +141,8 @@ def compute_tauC(states, times, nc=nc):
             C[ii,jj] += 1  ### counting the transtion
     return tau, C    
 
-tau,C = compute_tauC(states, times)  # emperical measurements
+#### for simulation
+tau_finite, C_finite = compute_tauC(states, times)  # emperical measurements
 
 # %% computing statistics for infinite data given parameter
 def P_frw_ctmc(param):
@@ -166,22 +169,54 @@ def edge_flux_inf(param):
                 flux_ij[ii,jj] = pi[ii]*kij[ii,jj]
     return flux_ij
 
+def EP(kij):
+    """
+    given transition matrix, compute entropy production
+    """
+    pi = get_stationary(kij)
+    # kij = Pij / pi[:,None]
+    eps = 1e-11
+    ep = 0
+    n = len(pi)
+    for ii in range(n):
+        for jj in range(n):
+            Pij = pi[ii]*kij[ii,jj]
+            Pji = pi[jj]*kij[jj,ii]
+            if ii is not jj:
+                ep += Pij*(np.log(Pij+eps)-np.log(Pji+eps))
+    return ep 
+
+def corr_param(param_true, param_infer):
+    """
+    Peerson's  correlation berween true and inferred parameters
+    """
+    correlation_coefficient, _ = pearsonr(param_true, param_infer)
+    return correlation_coefficient
+
+# %% for infinite data
+###############################################################################
+#### for ground-truth (infinite data!)
+tau_infinite = pi_ss*total_time
+flux_ij_true = edge_flux_inf(param_true)
+C_infinite = flux_ij_true* total_time
+
 # %% Maxcal functions (should write better code and import once confirmed...)
-def MaxCal_D(Pij, kij0, param):
+def MaxCal_D(kij, kij0, param):
     """
     KL devergence term, with transition Pij and prior rate kij0 as input
     This term can be unstable in log!
     """
-    pi = get_stationary(Pij)
+    pi = get_stationary(kij)
     # kij = Pij / pi[:,None]
-    eps = 1e-11
+    eps = 1e-20
     kl = 0
     n = len(pi)
     for ii in range(n):
         for jj in range(n):
+            Pij = pi[ii]*kij[ii,jj]
             if ii is not jj:
-                kl += Pij[ii,jj]*(np.log(Pij[ii,jj]+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
-                      + pi[ii]*kij0[ii,jj] - Pij[ii,jj]
+                kl += Pij*(np.log(Pij+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
+                      + pi[ii]*kij0[ii,jj] - Pij
     return kl
 
 def get_stationary(M):
@@ -210,8 +245,8 @@ def objective_param(param, kij0):
     """
     objective in the parameter space, using frw and adding extra constraints
     """
-    Pyx,_ = param2M(param)
-    D = MaxCal_D(Pyx, kij0, param)
+    kij,_ = param2M(param)
+    D = MaxCal_D(kij, kij0, param)
     return D
 
 def eq_constraint(param, observations, Cp_condition):
@@ -223,13 +258,23 @@ def eq_constraint(param, observations, Cp_condition):
 dofs = num_params*1
 dofs_all = nc**2 + nc
 target_dof = dofs + nc
-kls = np.zeros(target_dof) # measure KL
-Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
-rank_tau = np.argsort(tau)[::-1]  # ranking occupency
-rank_C = np.argsort(C.reshape(-1))[::-1]  # ranking transition
-tau_, C_ = tau/total_time, C/total_time # correct normalization
-observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
-# observations = np.concatenate((C_.reshape(-1), tau_))
+
+### recordings
+kls_inf = np.zeros(target_dof) # for infinite data
+kls_fin = np.zeros(target_dof)  # for finite data
+r2_inf = np.zeros(target_dof)
+r2_fin = np.zeros(target_dof)
+ep_inf = np.zeros(target_dof)
+ep_fin = np.zeros(target_dof)
+
+### sort according to inifinite data
+Cp_condition = np.zeros(dofs_all)
+rank_tau = np.argsort(tau_infinite)[::-1]  # ranking occupency
+rank_C = np.argsort(C_infinite.reshape(-1))[::-1]  # ranking transition
+tau_i, C_i = tau_infinite/total_time, C_infinite/total_time # correct normalization
+observations_inf = np.concatenate((tau_i, C_i.reshape(-1)))  # observation from simulation!
+tau_f, C_f = tau_finite/total_time, C_finite/total_time # correct normalization
+observations_fin = np.concatenate((tau_f, C_f.reshape(-1))) 
 
 P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
@@ -242,46 +287,71 @@ while ii < target_dof:
         Cp_condition[rank_tau[ii]] = 1
     else:
         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
-    
-    # if ii<(dofs-nc):
-    #     Cp_condition[rank_C[ii]] = 1
-    # else:
-    #     Cp_condition[rank_tau[ii-(dofs-nc)] + (dofs-nc)] = 1
-        
-    
+          
     ### run max-cal!
-    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+    constraints_inf = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations_inf, Cp_condition)})
+    constraints_fin = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations_fin, Cp_condition)})
     bounds = [(.0, 100)]*len(param_true)
 
     # Perform optimization using SLSQP method
     param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0 + param_true*0
-    result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+    result_inf = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints_inf, bounds=bounds)
+    result_fin = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints_fin, bounds=bounds)
     
     # computed and record the corresponding KL
-    param_temp = result.x
-    Pyx,_ = param2M(param_temp)
-    kls[ii] = MaxCal_D(Pyx, P0, param_temp)
+    param_inf = result_inf.x
+    param_fin = result_fin.x
+    kij_inf,_ = param2M(param_inf)
+    kij_fin,_ = param2M(param_fin)
+    kls_inf[ii] = MaxCal_D(kij_inf, P0, param_inf)
+    kls_fin[ii] = MaxCal_D(kij_fin, P0, param_fin)
+    ep_inf[ii] = EP(kij_inf)
+    ep_fin[ii] = EP(kij_fin)
+    r2_inf[ii] = corr_param(param_true, param_inf)
+    r2_fin[ii] = corr_param(param_true, param_fin)
+    
     print(ii)    
     ii = ii+1
 
 # %% compare 
-M_inf, pi_inf = param2M(param_temp)
-flux_ij = edge_flux_inf(param_temp)
+M_inf, pi_inf = param2M(param_inf)
+flux_ij = edge_flux_inf(param_inf)
 plt.figure()
 plt.subplot(211)
-plt.plot(C_.reshape(-1), flux_ij.reshape(-1),'.')
+plt.plot(C_infinite.reshape(-1), flux_ij.reshape(-1),'.')
 
 plt.subplot(212)
-plt.plot(tau_, pi_inf, '.')
+plt.plot(tau_infinite, pi_inf, '.')
 
 # print(np.max(C_-M_inf))
 
 # %%
+# plt.figure()
+# plt.plot(np.log(kls[:]),'-o')
+# plt.xlabel('ranked dof', fontsize=20)
+# plt.ylabel('KL', fontsize=20)
+
+# %% compare finit and inifinite data KL
 plt.figure()
-plt.plot(np.log(kls[:]),'-o')
-plt.xlabel('ranked dof', fontsize=20)
-plt.ylabel('KL', fontsize=20)
-# plt.ylim([0,10])
+plt.plot(kls_inf,'-o', label='analytic')
+plt.plot(kls_fin,'-o', label='finite-data')
+plt.legend(fontsize=20); plt.ylabel('KL', fontsize=20)
+
+plt.figure()
+plt.plot(r2_inf,'-o', label='analytic')
+plt.plot(r2_fin,'-o', label='finite-data')
+plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
+
+plt.figure()
+plt.plot(ep_inf,'-o', label='analytic')
+plt.plot(ep_fin,'-o', label='finite-data')
+plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
+
+# %%
+# three traces scaling with DOF (infinite vs finite data)
+# - KL (maybe keep analytic sorting order)
+# - peerson correlation (of the elements)
+# - EP (may fluctuate later with C) (pij comes within Maxcal!, pair not transition, k!!!)
 
 # %%
 # simulate spikes now!!!

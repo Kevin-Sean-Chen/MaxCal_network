@@ -19,7 +19,7 @@ matplotlib.rc('ytick', labelsize=20)
 # Simulation parameters
 N = 3
 dt = 0.1  # time step in milliseconds
-timesteps = 50000  # total simulation steps
+timesteps = 30000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
@@ -32,7 +32,7 @@ v_reset = -65.0  # reset potential after a spike
 # E-I balanced circuit
 synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
-                             [1, 1, 0]])*20  #20  # Neuron 2 connections
+                             [1, 1,  0]])*20  #20  # Neuron 2 connections
 # cyclic circuit
 # synaptic_weights = np.array([[0, 1, -1],  # Neuron 0 connections
 #                               [-1, 0, 1],  # Neuron 1 connections
@@ -44,7 +44,7 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
 S = synaptic_weights*1
 np.fill_diagonal(S, np.zeros(3))
 # synaptic_weights = np.random.randn(3,3)*.8
-noise_amp = 2
+noise_amp = 2.
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant
@@ -268,21 +268,22 @@ def edge_flux_inf(param):
     return flux_ij
 
 # %% Maxcal functions (should write better code and import once confirmed...)
-def MaxCal_D(Pij, kij0, param):
+def MaxCal_D(kij, kij0, param):
     """
     KL devergence term, with transition Pij and prior rate kij0 as input
     This term can be unstable in log!
     """
-    pi = get_stationary(Pij)
+    pi = get_stationary(kij)
     # kij = Pij / pi[:,None]
     eps = 1e-11
     kl = 0
     n = len(pi)
     for ii in range(n):
         for jj in range(n):
+            Pij = pi[ii]*kij[ii,jj]
             if ii is not jj:
-                kl += Pij[ii,jj]*(np.log(Pij[ii,jj]+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
-                      + pi[ii]*kij0[ii,jj] - Pij[ii,jj]
+                kl += Pij*(np.log(Pij+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
+                      + pi[ii]*kij0[ii,jj] - Pij
     return kl
 
 def get_stationary(M):
@@ -311,8 +312,8 @@ def objective_param(param, kij0):
     """
     objective in the parameter space, using frw and adding extra constraints
     """
-    Pyx,_ = param2M(param)
-    D = MaxCal_D(Pyx, kij0, param)
+    kij,_ = param2M(param)
+    D = MaxCal_D(kij, kij0, param)
     return D
 
 def eq_constraint(param, observations, Cp_condition):
@@ -355,8 +356,8 @@ while ii < target_dof:
     
     # computed and record the corresponding KL
     param_temp = result.x
-    Pyx,_ = param2M(param_temp)
-    kls[ii] = MaxCal_D(Pyx, P0, param_temp)
+    kij,_ = param2M(param_temp)
+    kls[ii] = MaxCal_D(kij, P0, param_temp)
     print(ii)    
     ii = ii+1
 
@@ -435,7 +436,9 @@ phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
 plt.plot(ws, phis,'o')
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20)
 
-
+# %% notes
+# can try numerical nonlinearity of LIF with synaptic filter
+# another idea: what happens when all C are cutout--> symetric vs. anti-symetric!!
 
 # %%
 # %% Izhikevich spiking circuit
