@@ -112,7 +112,7 @@ def sim_Q(Q, total_time, time_step):
 
     return np.array(states), np.array(times)
 
-total_time = 500
+total_time = 50
 time_step = 1  # check with Peter if this is ok... THIS is OK
 M,pi_ss = param2M(param_true)
 states, times = sim_Q(M, total_time, time_step)
@@ -175,7 +175,7 @@ def EP(kij):
     """
     pi = get_stationary(kij)
     # kij = Pij / pi[:,None]
-    eps = 1e-11
+    eps = 1e-20
     ep = 0
     n = len(pi)
     for ii in range(n):
@@ -186,12 +186,22 @@ def EP(kij):
                 ep += Pij*(np.log(Pij+eps)-np.log(Pji+eps))
     return ep 
 
-def corr_param(param_true, param_infer):
+def corr_param(param_true, param_infer, mode='binary'):
     """
     Peerson's  correlation berween true and inferred parameters
     """
-    correlation_coefficient, _ = pearsonr(param_true, param_infer)
-    return correlation_coefficient
+    if mode=='binary':
+        true_temp = param_true*0 - 1
+        infer_temp = param_infer*0 - 1
+        true_temp[param_true>0] = 1
+        infer_temp[param_infer>0] = 1
+        corr = np.dot(true_temp, infer_temp)/np.linalg.norm(true_temp)/np.linalg.norm(infer_temp)
+        return corr
+    else:
+        true_temp = param_true*1
+        infer_temp = param_infer*1        
+        correlation_coefficient, _ = pearsonr(true_temp, infer_temp)
+        return correlation_coefficient
 
 # %% for infinite data
 ###############################################################################
@@ -346,6 +356,10 @@ plt.figure()
 plt.plot(ep_inf,'-o', label='analytic')
 plt.plot(ep_fin,'-o', label='finite-data')
 plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
+
+# %%
+print('infinite diff: ', np.sum(C_i,0) - np.sum(C_i,1))
+print('finite diff: ', np.sum(C_f,0) - np.sum(C_f,1))
 
 # %%
 # three traces scaling with DOF (infinite vs finite data)

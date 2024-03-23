@@ -19,7 +19,7 @@ matplotlib.rc('ytick', labelsize=20)
 # Simulation parameters
 N = 3
 dt = 0.1  # time step in milliseconds
-timesteps = 30000  # total simulation steps
+timesteps = 50000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
@@ -44,7 +44,7 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
 S = synaptic_weights*1
 np.fill_diagonal(S, np.zeros(3))
 # synaptic_weights = np.random.randn(3,3)*.8
-noise_amp = 2.
+noise_amp = 2
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant
@@ -242,6 +242,40 @@ def firing2tauC(firing):
     
     return tau, C
 
+def corr_param(param_true, param_infer, mode='binary'):
+    """
+    Peerson's  correlation berween true and inferred parameters
+    """
+    if mode=='binary':
+        true_temp = param_true*0 - 1
+        infer_temp = param_infer*0 - 1
+        true_temp[param_true>0] = 1
+        infer_temp[param_infer>0] = 1
+        corr = np.dot(true_temp, infer_temp)/np.linalg.norm(true_temp)/np.linalg.norm(infer_temp)
+        return corr
+    else:
+        true_temp = param_true*1
+        infer_temp = param_infer*1        
+        correlation_coefficient, _ = pearsonr(true_temp, infer_temp)
+        return correlation_coefficient
+   
+def EP(kij):
+    """
+    given transition matrix, compute entropy production
+    """
+    pi = get_stationary(kij)
+    # kij = Pij / pi[:,None]
+    eps = 1e-20
+    ep = 0
+    n = len(pi)
+    for ii in range(n):
+        for jj in range(n):
+            Pij = pi[ii]*kij[ii,jj]
+            Pji = pi[jj]*kij[jj,ii]
+            if ii is not jj:
+                ep += Pij*(np.log(Pij+eps)-np.log(Pji+eps))
+    return ep 
+
 # %% computing statistics for infinite data given parameter
 def P_frw_ctmc(param):
     """
@@ -321,12 +355,19 @@ def eq_constraint(param, observations, Cp_condition):
     cp = C_P(Pxy, observations, param, Cp_condition)
     return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
 
+def invf(x):
+    output = np.log(x)
+    # output = np.log(-1+np.exp(-x))
+    return output
 
 # %% building constraints
 dofs = num_params*1
 dofs_all = nc**2 + nc
 target_dof = dofs + nc
 kls = np.zeros(target_dof) # measure KL
+corrs = kls*0
+eps = kls*0
+
 Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
 rank_tau = np.argsort(tau)[::-1]  # ranking occupency
 rank_C = np.argsort(C.reshape(-1))[::-1]  # ranking transition
@@ -338,6 +379,9 @@ P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, -np.sum(P0,1))
 ii = 0
+### true params
+true_wij = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
+
 ### scan through all dof
 while ii < target_dof:
     ### work on tau first
@@ -358,6 +402,17 @@ while ii < target_dof:
     param_temp = result.x
     kij,_ = param2M(param_temp)
     kls[ii] = MaxCal_D(kij, P0, param_temp)
+    
+    ### check spiking parameters!!!
+    # load params
+    M_inf, pi_inf = param2M(param_temp)
+    f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
+    w12,w13,w21 = invf(M_inf[4,6]/f2), invf(M_inf[4,5]/f3), invf(M_inf[2,6]/f1)
+    w23,w32,w31 = invf(M_inf[2,3]/f3), invf(M_inf[1,3]/f2), invf(M_inf[1,5]/f1)
+    infer_wij = np.array([w12,w13,w21, w23,w32,w31])
+    corrs[ii] = corr_param(true_wij, infer_wij, 'binary')  # bin correlation of weights
+    eps[ii] = EP(M_inf)      # inreverssibility
+    ###
     print(ii)    
     ii = ii+1
 
@@ -388,11 +443,6 @@ plt.colorbar()
 #               [0,    0,    r1,   0,              r2,   0,               0,               f3*np.exp(w123)],
 #               [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
 
-def invf(x):
-    output = np.log(x)
-    # output = np.log(-1+np.exp(-x))
-    return output
-
 f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
 # w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
 # w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
@@ -400,16 +450,20 @@ w12,w13,w21 = invf(M_inf[4,6]/f2), invf(M_inf[4,5]/f3), invf(M_inf[2,6]/f1)
 w23,w32,w31 = invf(M_inf[2,3]/f3), invf(M_inf[1,3]/f2), invf(M_inf[1,5]/f1)
 
 bar_width = 0.35
-bar_positions_group1 = np.arange(6)
-bar_positions_group2 = bar_positions_group1 + bar_width*0
+bar_positions_group2 = np.arange(6)
+bar_positions_group1 = ['w12','w13','w21','w23','w32','w31']
+# bar_positions_group2 = bar_positions_group1# + bar_width*0
 plt.figure()
 plt.subplot(211)
-plt.bar(bar_positions_group1,[S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]],width=bar_width)
-# plt.bar(bar_positions_group1,[S[0,1],S[0,2],S[1,0],S[1,2],S[2,1],S[2,0]],width=bar_width)
-plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
+plt.bar(bar_positions_group1, [S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]], width=bar_width)
+plt.bar(np.arange(4),[S[1,0],S[2,0],S[0,1],S[2,1]],width=bar_width,color='orange')
+plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
+plt.ylabel('true weights', fontsize=20)
 plt.subplot(212)
-plt.bar(bar_positions_group2,np.array([w12,w13,w21,w23,w32,w31])+0,width=bar_width)
-plt.plot(bar_positions_group1, bar_positions_group1*0, 'k')
+plt.bar(bar_positions_group1, np.array([w12,w13,w21,w23,w32,w31])+0, width=bar_width)
+plt.bar(np.arange(4), np.array([w12,w13,w21,w23])+0, width=bar_width,color='orange') ## for E cells
+plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
+plt.ylabel('MaxCal inferred', fontsize=20)
 
 
 inf_w = np.array([w12,w13,w21,w23,w32,w31])
@@ -420,6 +474,7 @@ plt.plot(inf_w, true_s,'o')
 
 correlation_coefficient, _ = pearsonr(inf_w, true_s)
 print(correlation_coefficient)
+
 
 # %% check biophysical correspondence
 ### (0, fi), (wji, fiewji ), (wki, fiewki ), (wji + wki, fiewjk,i )
@@ -435,6 +490,23 @@ ws = np.array([0, w13, w23, w13+w23])
 phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
 plt.plot(ws, phis,'o')
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20)
+
+# %%
+plt.figure()
+plt.subplot(131)
+plt.plot(kls,'-o')
+# plt.legend(fontsize=20); 
+plt.ylabel('KL', fontsize=20)
+
+# plt.figure()
+plt.subplot(132)
+plt.plot(corrs,'-o')
+plt.ylabel('corr', fontsize=20)
+
+# plt.figure()
+plt.subplot(133)
+plt.plot(eps,'-o')
+plt.ylabel('EP', fontsize=20)
 
 # %% notes
 # can try numerical nonlinearity of LIF with synaptic filter
