@@ -143,6 +143,41 @@ def edge_flux_inf(param):
                 flux_ij[ii,jj] = pi[ii]*kij[ii,jj]
     return flux_ij
 
+# %% measurements
+def EP(kij):
+    """
+    given transition matrix, compute entropy production
+    """
+    pi = get_stationary(kij)
+    # kij = Pij / pi[:,None]
+    eps = 1e-20
+    ep = 0
+    n = len(pi)
+    for ii in range(n):
+        for jj in range(n):
+            Pij = pi[ii]*kij[ii,jj]
+            Pji = pi[jj]*kij[jj,ii]
+            if ii is not jj:
+                ep += Pij*(np.log(Pij+eps)-np.log(Pji+eps))
+    return ep 
+
+def corr_param(param_true, param_infer, mode='binary'):
+    """
+    Peerson's  correlation berween true and inferred parameters
+    """
+    if mode=='binary':
+        true_temp = param_true*0 - 1
+        infer_temp = param_infer*0 - 1
+        true_temp[param_true>0] = 1
+        infer_temp[param_infer>0] = 1
+        corr = np.dot(true_temp, infer_temp)/np.linalg.norm(true_temp)/np.linalg.norm(infer_temp)
+        return corr
+    else:
+        true_temp = param_true*1
+        infer_temp = param_infer*1        
+        correlation_coefficient, _ = pearsonr(true_temp, infer_temp)
+        return correlation_coefficient
+
 # %% Maxcal functions (should write better code and import once confirmed...)
 def MaxCal_D(kij, kij0, param):
     """

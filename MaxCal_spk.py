@@ -19,13 +19,14 @@ matplotlib.rc('ytick', labelsize=20)
 # Simulation parameters
 N = 3
 dt = 0.1  # time step in milliseconds
-timesteps = 50000  # total simulation steps
+timesteps = 90000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
 tau = 10.0  # membrane time constant
 v_rest = -65.0  # resting membrane potential
-v_threshold = -50.0  # spike threshold
+v_threshold = np.array([-50, -60, -50])  # spike threshold for each neuron
+v_threshold_plot = -50  # for simple visualization
 v_reset = -65.0  # reset potential after a spike
 
 # Synaptic weight matrix
@@ -86,7 +87,7 @@ plt.figure(figsize=(10, 5))
 for i in range(3):
     plt.plot(np.arange(timesteps) * dt, v_neurons[i, :], label=f'Neuron {i}')
 
-plt.scatter(spike_times, np.ones_like(spike_times) * v_threshold, color='red', marker='o', label='Spikes')
+plt.scatter(spike_times, np.ones_like(spike_times) * v_threshold_plot, color='red', marker='o', label='Spikes')
 plt.xlabel('Time (ms)')
 plt.ylabel('Membrane Potential')
 plt.title('Neural Circuit Simulation')
@@ -482,14 +483,14 @@ print(correlation_coefficient)
 plt.figure()
 ws = np.array([0, w21, w31, w21+w31])
 phis = np.array([f1, M_inf[2,6], M_inf[1,5], M_inf[3,7]])
-plt.plot(ws, phis,'o')
+plt.plot(ws, phis,'o', label='neuron1')
 ws = np.array([0, w12, w32, w12+w32])
 phis = np.array([f2, M_inf[4,6], M_inf[1,3], M_inf[5,7]])
-plt.plot(ws, phis,'o')
+plt.plot(ws, phis,'o', label='neuron2')
 ws = np.array([0, w13, w23, w13+w23])
 phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
-plt.plot(ws, phis,'o')
-plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20)
+plt.plot(ws, phis,'o', label='neuron3')
+plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
 
 # %%
 plt.figure()
@@ -505,7 +506,7 @@ plt.ylabel('corr', fontsize=20)
 
 # plt.figure()
 plt.subplot(133)
-plt.plot(eps,'-o')
+plt.semilogy(eps,'-o')
 plt.ylabel('EP', fontsize=20)
 
 # %% notes
