@@ -130,11 +130,11 @@ def P_frw_ctmc(param):
         Pxy[ii,:] = k[ii,:]*pi[ii]  # compute joint from transition k and steady-state pi (this is wrong using Q!?)
     return Pxy
 
-def edge_flux_inf(param):
+def edge_flux_inf(param, N=N, combinations=combinations):
     """
     compute edge flux with infinite data using pi_i k_ij
     """
-    kij, pi = param2M(param)
+    kij, pi = param2M(param, N, combinations)
     nc = len(pi)
     flux_ij = np.zeros((nc,nc))
     for ii in range(nc):
@@ -277,3 +277,7 @@ def sim_Q(Q, total_time, time_step):
         current_time = next_time
 
     return np.array(states), np.array(times)
+
+# %% function calling
+# if __name__ == "__main__":
+    

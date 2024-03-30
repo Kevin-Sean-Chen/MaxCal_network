@@ -98,7 +98,8 @@ np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, -np.sum(P0,1))
 dofs_all = nc**2 + nc
 Cp_condition = np.ones(dofs_all)
-Cp_condition[16:] = np.zeros(dofs_all-16) # test with low-d dof constraints!!!
+# cutoff = 20
+# Cp_condition[cutoff:] = np.zeros(dofs_all-cutoff) # test with low-d dof constraints!!!
 
 for ww in range(len(w_s)):
     for nn in range(len(n_s)):
@@ -138,11 +139,15 @@ for ww in range(len(w_s)):
         
 # %%
 plt.figure()
-plt.imshow(R2s, aspect='auto',  origin='lower'); plt.colorbar()
+img = plt.imshow(R2s, aspect='auto',  origin='lower');
+cbar = plt.colorbar(img)
+# img.set_clim(0.5, .7) 
 plt.xticks(np.arange(len(n_s)), n_s)
 plt.yticks(np.arange(len(w_s)), w_s)
 plt.xlabel('noise', fontsize=20); plt.ylabel('network', fontsize=20); 
-plt.title('R2 (dof:16)', fontsize=20)
+plt.title('R2', fontsize=20)
+# plt.title('R2 dof:{}'.format(cutoff), fontsize=20)
+# plt.savefig('spk_scan.pdf')
 
 # %% IDEAS
 # alter window according to ISI in data

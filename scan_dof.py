@@ -17,7 +17,7 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 # %% baiscs
-rep_finite = 10  # repeat finit oprimization runs
+rep_finite = 10  #10 repeat finit oprimization runs
 N = 3
 nc = 2**3
 num_params = int((N*2**N)) 
@@ -119,15 +119,53 @@ plt.figure()
 plt.plot(kls_fin,'-o', alpha=0.2, color='k')
 plt.plot(kls_inf,'-o', label='analytic')
 plt.legend(fontsize=20); plt.ylabel('KL', fontsize=20)
+# plt.savefig('KL.pdf')
 
 plt.figure()
 plt.plot(r2_fin,'-o',  alpha=0.2, color='k')
 plt.plot(r2_inf,'-o', label='analytic')
 plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
+# plt.savefig('R2.pdf')
 
 plt.figure()
-plt.semilogy(ep_fin,'-o',  alpha=0.2, color='k')
-plt.semilogy(ep_inf,'-o', label='analytic')
+plt.plot(ep_fin,'-o',  alpha=0.2, color='k')
+plt.plot(ep_inf,'-o', label='analytic')
 plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
+# plt.savefig('EP.pdf')
 
     
+# %%
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# scan for finit data versus KL rate
+# %%
+data_len = np.array([25,50,100,200,400,800])
+kl_dist = np.zeros(len(data_len))
+Cp_condition = np.ones(dofs_all)
+
+for dd in range(len(data_len)):
+    #### for simulation
+    time_i = data_len[dd]
+    states, times = sim_Q(M, time_i, time_step)
+    tau_finite, C_finite = compute_tauC(states, times)  # emperical measurements
+    tau_f, C_f = tau_finite/time_i, C_finite/time_i # correct normalization
+    observations_fin = np.concatenate((tau_f, C_f.reshape(-1))) 
+    
+    ### run max-cal!
+    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations_fin, Cp_condition)})
+    bounds = [(.0, 100)]*len(param_true)
+
+    # Perform optimization using SLSQP method
+    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0 + param_true*0
+    result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+    
+    # computed and record the corresponding KL
+    param = result.x
+    kij_fin,_ = param2M(param)
+    kl_dist[dd] = MaxCal_D(kij_fin, M, param)
+    
+# %%
+plt.figure()
+plt.plot(data_len, kl_dist,'-o')
+plt.xlabel('data length', fontsize=20)
+plt.ylabel('KL(infer|true)', fontsize=20)
+# plt.savefig('KL_scaling.pdf')

@@ -317,8 +317,8 @@ while ii < target_dof:
     kls_fin[ii] = MaxCal_D(kij_fin, P0, param_fin)
     ep_inf[ii] = EP(kij_inf)
     ep_fin[ii] = EP(kij_fin)
-    r2_inf[ii] = corr_param(param_true, param_inf)
-    r2_fin[ii] = corr_param(param_true, param_fin)
+    r2_inf[ii] = corr_param(param_true, param_inf, '0')
+    r2_fin[ii] = corr_param(param_true, param_fin, '0')
     
     print(ii)    
     ii = ii+1

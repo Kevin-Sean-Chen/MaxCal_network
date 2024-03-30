@@ -149,6 +149,8 @@ plt.figure()
 plt.plot(np.log(kls[:]),'-o')
 plt.xlabel('ranked dof', fontsize=20)
 plt.ylabel('KL', fontsize=20)
+plt.title('retina', fontsize=20)
+# plt.savefig('retina_KL.pdf')
 # plt.ylim([0,10])
 
 # %%
@@ -162,3 +164,5 @@ categories = ['w12','w13','w21','w23','w32','w31']
 plt.figure()
 plt.bar(np.arange(6), inf_w)
 plt.xticks(np.arange(len(categories)), categories)
+plt.title('retina', fontsize=20)
+# plt.savefig('retina_wij.pdf')

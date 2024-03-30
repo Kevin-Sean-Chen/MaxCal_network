@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Mar  2 17:50:11 2024
+Created on Fri Mar 29 21:37:02 2024
 
 @author: kevin
 """
@@ -14,7 +14,6 @@ import matplotlib
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
-
 # %% LIF model
 # Simulation parameters
 N = 3
@@ -25,7 +24,7 @@ lt = timesteps*1
 # Neuron parameters
 tau = 10.0  # membrane time constant
 v_rest = -65.0  # resting membrane potential
-v_threshold = np.array([-50, -60, -50])  # spike threshold for each neuron
+v_threshold = np.array([-50, -50, -50])  # spike threshold for each neuron
 v_threshold_plot = -50  # for simple visualization
 v_reset = -65.0  # reset potential after a spike
 
@@ -35,9 +34,20 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
                              [1, 1,  0]])*20  #20  # Neuron 2 connections
 # cyclic circuit
-# synaptic_weights = np.array([[0, 1, -1],  # Neuron 0 connections
-#                               [-1, 0, 1],  # Neuron 1 connections
-#                               [1, -1, 0]])*20  #20  # Neuron 2 connections
+synaptic_weights = np.array([[0, 0, 1],  # Neuron 0 connections
+                              [1, 0, 0],  # Neuron 1 connections
+                              [0, 1, 0]])*20  #20  # Neuron 2 connections
+
+# common circuit
+synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
+                              [1, 0, 0],  # Neuron 1 connections
+                              [1, 0, 0]])*20  #20  # Neuron 2 connections
+
+# chain circuit
+synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
+                              [1, 0, 0],  # Neuron 1 connections
+                              [0, 1, 0]])*20  #20  # Neuron 2 connections
+
 # random circuit
 # synaptic_weights = (np.random.rand(3,3)+1)*20
 # sign = np.random.randn(3,3); sign[sign>0]=1; sign[sign<0] = -1
@@ -107,10 +117,9 @@ isi = np.diff(allspktime)
 plt.figure()
 aa,bb = np.histogram(isi,30)
 plt.plot(bb[1:],aa,'-o')
+plt.xlabel('ISI (0.1ms)', fontsize=20)
 # plt.yscale('log')
-
-# %% with Firing data in hand...
-###############################################################################
+# plt.savefig('ISI.pdf')
 
 # %% extract spike time per neuron... can later check ISI distribution
 isi = np.zeros(N)
@@ -155,26 +164,9 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=150)
+spk_states, spk_times = spk2statetime(firing, window=120)
 plt.figure()
 plt.plot(spk_states)
-
-# %% NEXT
-# put code together
-# check if Wij roughly matches M
-# check how to interpret higher-order w_ijk -> response curve!
-# come back to thinkig about the time window
-#... retina!!
-
-###############################################################################
-# IMPORTANT
-# find a bin/window method that guarantees CTMC transitions!
-###############################################################################
-###
-# phase portait of W strength vs. noise strength, and measure correlation of reconstruction
-# play with motif
-# download retina
-###
 
 # %% CTMC setup
 # N = 3  # number of neurons
@@ -365,9 +357,6 @@ def invf(x):
 dofs = num_params*1
 dofs_all = nc**2 + nc
 target_dof = dofs + nc
-kls = np.zeros(target_dof) # measure KL
-corrs = kls*0
-eps = kls*0
 
 Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
 rank_tau = np.argsort(tau)[::-1]  # ranking occupency
@@ -379,51 +368,18 @@ observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simula
 P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, -np.sum(P0,1))
-ii = 0
-### true params
-true_wij = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
-
-### scan through all dof
-while ii < target_dof:
-    ### work on tau first
-    if ii<nc-1:
-        Cp_condition[rank_tau[ii]] = 1
-    else:
-        Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
     
-    ### run max-cal!
-    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-    bounds = [(.0, 100)]*num_params
+Cp_condition = np.ones(dofs_all)
+### run max-cal!
+constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+bounds = [(.0, 100)]*num_params
 
-    # Perform optimization using SLSQP method
-    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-    result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-    
-    # computed and record the corresponding KL
-    param_temp = result.x
-    kij,_ = param2M(param_temp)
-    kls[ii] = MaxCal_D(kij, P0, param_temp)
-    
-    ### check spiking parameters!!!
-    # load params
-    M_inf, pi_inf = param2M(param_temp)
-    f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
-    w12,w13,w21 = invf(M_inf[4,6]/f2), invf(M_inf[4,5]/f3), invf(M_inf[2,6]/f1)
-    w23,w32,w31 = invf(M_inf[2,3]/f3), invf(M_inf[1,3]/f2), invf(M_inf[1,5]/f1)
-    infer_wij = np.array([w12,w13,w21, w23,w32,w31])
-    corrs[ii] = corr_param(true_wij, infer_wij, '0')  # bin correlation of weights
-    eps[ii] = EP(M_inf)      # inreverssibility
-    ###
-    print(ii)    
-    ii = ii+1
+# Perform optimization using SLSQP method
+param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
 
-
-# %%
-plt.figure()
-plt.plot(np.log(kls[:]),'-o')
-plt.xlabel('ranked dof', fontsize=20)
-plt.ylabel('KL', fontsize=20)
-# plt.ylim([0,10])
+# computed and record the corresponding KL
+param_temp = result.x
 
 # %% attempt to compare inferred M and nework W... ask Peter~
 M_inf, pi_inf = param2M(param_temp)
@@ -457,15 +413,15 @@ bar_positions_group1 = ['w12','w13','w21','w23','w32','w31']
 plt.figure()
 plt.subplot(211)
 plt.bar(bar_positions_group1, [S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]], width=bar_width)
-plt.bar(np.arange(4),[S[1,0],S[2,0],S[0,1],S[2,1]],width=bar_width,color='orange')
+# plt.bar(np.arange(4),[S[1,0],S[2,0],S[0,1],S[2,1]],width=bar_width,color='orange')
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('true weights', fontsize=20)
 plt.subplot(212)
 plt.bar(bar_positions_group1, np.array([w12,w13,w21,w23,w32,w31])+0, width=bar_width)
-plt.bar(np.arange(4), np.array([w12,w13,w21,w23])+0, width=bar_width,color='orange') ## for E cells
+# plt.bar(np.arange(4), np.array([w12,w13,w21,w23])+0, width=bar_width,color='orange') ## for E cells
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('MaxCal inferred', fontsize=20)
-# plt.savefig('infer_w.pdf')
+# plt.savefig('infer_w_chain.pdf')
 
 inf_w = np.array([w12,w13,w21,w23,w32,w31])
 true_s = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
@@ -475,7 +431,6 @@ plt.plot(inf_w, true_s,'o')
 
 correlation_coefficient, _ = pearsonr(inf_w, true_s)
 print(correlation_coefficient)
-
 
 # %% check biophysical correspondence
 ### (0, fi), (wji, fiewji ), (wki, fiewki ), (wji + wki, fiewjk,i )
@@ -492,70 +447,3 @@ phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
 plt.plot(ws, phis,'o', label='neuron3')
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
 # plt.savefig('x_phi.pdf')
-
-# %%
-plt.figure()
-plt.subplot(131)
-plt.plot(kls,'-o')
-# plt.legend(fontsize=20); 
-plt.ylabel('KL', fontsize=20)
-
-# plt.figure()
-plt.subplot(132)
-plt.plot(corrs,'-o')
-plt.ylabel('corr', fontsize=20)
-
-# plt.figure()
-plt.subplot(133)
-plt.semilogy(eps,'-o')
-plt.ylabel('EP', fontsize=20)
-# plt.savefig('spk_record2.pdf')
-
-# %% notes
-# can try numerical nonlinearity of LIF with synaptic filter
-# another idea: what happens when all C are cutout--> symetric vs. anti-symetric!!
-
-# %%
-# %% Izhikevich spiking circuit
-# lt = 30000
-# Ne = 2  # 2 excitation
-# Ni = 1  # 1 inhibition
-# N = Ne + Ni
-# re = np.random.rand(Ne)
-# ri = np.random.rand(Ni)
-# # a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.08*ri))
-# # b = np.concatenate((0.2*np.ones(Ne), 0.25-0.05*ri))
-# # c = np.concatenate((-65+15*re**2 , -65*np.ones(Ni)))
-# # d = np.concatenate((8-6*re**2 , 2*np.ones(Ni)))
-# a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.0*ri))
-# b = np.concatenate((0.2*np.ones(Ne), 0.2-0.0*ri))
-# c = np.concatenate((-65+15*re**2*0 , -65*np.ones(Ni)))
-# d = np.concatenate((8-6*re**2*0 , 8*np.ones(Ni)))
-# S = np.concatenate((5*np.random.rand(Ne+Ni, Ne), 10*-np.random.rand(Ne+Ni, Ni)), axis=1)*10
-# np.fill_diagonal(S, np.zeros(N))  # remove self-coupling
-# v = -65*np.ones(Ne+Ni)
-# u = b*v
-# dt = 0.5
-# tau_s = 10
-# I = np.zeros(N)
-# firing = []#np.zeros((lt,2))
-# for tt in range(lt):
-#     # I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
-#     I = np.concatenate((1*np.random.randn(Ne) , 1*np.random.randn(Ni)))*4
-#     fired = np.where(v>=30)[0]
-#     firing.append([tt+0*fired, fired])
-#     v[fired] = c[fired]
-#     u[fired] = u[fired] + d[fired]
-#     dI = np.zeros(N)
-#     if len(fired)>0:
-#         for ii in range(len(fired)):  # identifying synaptic input in one step
-#             I = I + S[:,fired[ii]]*1
-#             # dI = dI + S[:,fired[ii]]
-#     # I = I + dt*(-I/tau_s +  dI)  # filtering
-#     v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) #+ I_th # step 0.5 ms
-#     v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) # for numerical
-#     u = u + a*(b*v - u) # stability
-
-# plt.figure()
-# for tt in range(lt):
-#     plt.plot(firing[tt][0], firing[tt][1],'k.')
