@@ -31,15 +31,18 @@ v_reset = -65.0  # reset potential after a spike
 
 # Synaptic weight matrix
 # E-I balanced circuit
-# synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
-#                              [1, 0, -2],  # Neuron 1 connections
-#                              [1, 1,  0]])*20  #20  # Neuron 2 connections
+synaptic_3neuron = np.array([[0, 1, -2],  # Neuron 0 connections
+                              [1, 0, -2],  # Neuron 1 connections
+                              [1, 1,  0]])*20  #20  # Neuron 2 connections
 
 # random circuit
-synaptic_weights = (np.random.rand(N5,N5)+1)*20
+hidden_stength = 20  # 2 5 10 15 20
+synaptic_weights = (np.random.rand(N5,N5)+1)*hidden_stength
 sign = np.random.randn(N5,N5); sign[sign>0]=1; sign[sign<0] = -1
 synaptic_weights = synaptic_weights*sign
-S = synaptic_weights[:3,:3]*1
+S = synaptic_3neuron[:3,:3]*1
+synaptic_weights[:3,:3] = synaptic_3neuron*1  # fix for 3 neurons
+
 np.fill_diagonal(S, np.zeros(N))
 # synaptic_weights = np.random.randn(3,3)*.8
 noise_amp = 2
@@ -139,7 +142,8 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
         for ti in range(window): # in time
             if len(this_window[ti][1])>0:
                 this_neuron = this_window[ti][1][0]  # the neuron that fired first
-                word[this_neuron] = 1
+                if this_neuron<N:
+                    word[this_neuron] = 1
         state_id = combinations.index(tuple(word))
         states_spk[tt] = state_id
     
@@ -412,17 +416,15 @@ plt.bar(bar_positions_group1, np.array([w12,w13,w21,w23,w32,w31])+0, width=bar_w
 plt.bar(np.arange(4), np.array([w12,w13,w21,w23])+0, width=bar_width,color='orange') ## for E cells
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('MaxCal inferred', fontsize=20)
-# plt.savefig('infer_w.pdf')
+# plt.savefig('3_of_5neurons.pdf')
 
 inf_w = np.array([w12,w13,w21,w23,w32,w31])
 true_s = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
 plt.figure()
 plt.plot(inf_w, true_s,'o')
 
-
 correlation_coefficient, _ = pearsonr(inf_w, true_s)
 print(correlation_coefficient)
-
 
 # %% check biophysical correspondence
 ### (0, fi), (wji, fiewji ), (wki, fiewki ), (wji + wki, fiewjk,i )
@@ -438,71 +440,41 @@ ws = np.array([0, w13, w23, w13+w23])
 phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
 plt.plot(ws, phis,'o', label='neuron3')
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
-# plt.savefig('x_phi.pdf')
 
-# %%
 plt.figure()
-plt.subplot(131)
-plt.plot(kls,'-o')
-# plt.legend(fontsize=20); 
-plt.ylabel('KL', fontsize=20)
+plt.imshow(synaptic_weights)
+plt.colorbar()
 
-# plt.figure()
-plt.subplot(132)
-plt.plot(corrs,'-o')
-plt.ylabel('corr', fontsize=20)
+# %% saving...
+# import pickle
 
-# plt.figure()
-plt.subplot(133)
-plt.semilogy(eps,'-o')
-plt.ylabel('EP', fontsize=20)
-# plt.savefig('spk_record2.pdf')
+# pre_text = 'C5_3neuron'
+# filename = pre_text + "_" + str(hidden_stength) + ".pkl"
 
-# %% notes
-# can try numerical nonlinearity of LIF with synaptic filter
-# another idea: what happens when all C are cutout--> symetric vs. anti-symetric!!
+# # Store variables in a dictionary
+# data = {'5_wij': synaptic_weights, '3_wij': synaptic_3neuron, 'firing': firing,\
+#         'M_inf': M_inf, 'inf_w': inf_w, 'true_w':true_wij, 'corr_coeff':correlation_coefficient}
+
+# # Save variables to a file
+# with open(filename, 'wb') as f:
+#     pickle.dump(data, f)
+
+# print("Variables saved successfully.")
+
+# %% loading past data
+# import pickle
+
+# # Load variables from file
+# with open('C5_3neuron_10.pkl', 'rb') as f:
+#     loaded_data = pickle.load(f)
+
+# print("Variables loaded successfully:")
+# print(loaded_data)
 
 # %%
-# %% Izhikevich spiking circuit
-# lt = 30000
-# Ne = 2  # 2 excitation
-# Ni = 1  # 1 inhibition
-# N = Ne + Ni
-# re = np.random.rand(Ne)
-# ri = np.random.rand(Ni)
-# # a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.08*ri))
-# # b = np.concatenate((0.2*np.ones(Ne), 0.25-0.05*ri))
-# # c = np.concatenate((-65+15*re**2 , -65*np.ones(Ni)))
-# # d = np.concatenate((8-6*re**2 , 2*np.ones(Ni)))
-# a = np.concatenate((0.02*np.ones(Ne) , 0.02+0.0*ri))
-# b = np.concatenate((0.2*np.ones(Ne), 0.2-0.0*ri))
-# c = np.concatenate((-65+15*re**2*0 , -65*np.ones(Ni)))
-# d = np.concatenate((8-6*re**2*0 , 8*np.ones(Ni)))
-# S = np.concatenate((5*np.random.rand(Ne+Ni, Ne), 10*-np.random.rand(Ne+Ni, Ni)), axis=1)*10
-# np.fill_diagonal(S, np.zeros(N))  # remove self-coupling
-# v = -65*np.ones(Ne+Ni)
-# u = b*v
-# dt = 0.5
-# tau_s = 10
-# I = np.zeros(N)
-# firing = []#np.zeros((lt,2))
-# for tt in range(lt):
-#     # I = np.concatenate((5*np.random.randn(Ne) , 2*np.random.randn(Ni)))*1
-#     I = np.concatenate((1*np.random.randn(Ne) , 1*np.random.randn(Ni)))*4
-#     fired = np.where(v>=30)[0]
-#     firing.append([tt+0*fired, fired])
-#     v[fired] = c[fired]
-#     u[fired] = u[fired] + d[fired]
-#     dI = np.zeros(N)
-#     if len(fired)>0:
-#         for ii in range(len(fired)):  # identifying synaptic input in one step
-#             I = I + S[:,fired[ii]]*1
-#             # dI = dI + S[:,fired[ii]]
-#     # I = I + dt*(-I/tau_s +  dI)  # filtering
-#     v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) #+ I_th # step 0.5 ms
-#     v = v + dt*(0.04*v**2 + 5*v + 140 - u + I) # for numerical
-#     u = u + a*(b*v - u) # stability
-
-# plt.figure()
-# for tt in range(lt):
-#     plt.plot(firing[tt][0], firing[tt][1],'k.')
+hidden_str = np.array([20,15,10,5,2])/20
+plt.figure()
+plt.plot(hidden_str, np.array([0.74,0.86,0.91,0.95,0.98]),'-o')
+plt.plot(hidden_str, np.array([0.70,0.73,0.82,0.91,0.98]),'-o')
+plt.xlabel('hidden/structure strength', fontsize=20)
+plt.ylabel('correlation coefficient', fontsize=20)
