@@ -41,9 +41,9 @@ combinations = list(itertools.product(spins, repeat=N))  # possible configuratio
 cell_ids = np.unique(spk_ids[0])
 nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three neurons
 # nids = np.array([16, 40, 31])
-# nids = np.array([24, 13, 10])  # 
+nids = np.array([24, 13, 10])  # 
 # nids = np.array([1,2,8])
-nids = np.array([50, 31, 13])
+# nids = np.array([50, 31, 13]) ###
 
 # check isi
 # the data is spike timing with 10kHz sampling, so .1ms time resolution
@@ -67,8 +67,8 @@ print(minisi_)
 print(max_lt)
 
 # %% loop across trial and time and neurons
-dt = 0.1
-lt = 5000#int(max_lt/dt)
+dt = 1.5#0.1
+lt = 10000#int(max_lt/dt)
 firing_s = []  # across repeats!
 
 # for dd in 1:#range(3):   #### try all data!!
@@ -96,7 +96,7 @@ for rr in range(reps):  # repeats
     firing_s.append(firing)
         
 # %% some tests!!
-window = 1000  # .1ms window
+window = 200  # .1ms window
 spk_state_all = []
 spk_time_all = []
 spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
