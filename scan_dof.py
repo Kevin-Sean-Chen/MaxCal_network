@@ -6,7 +6,7 @@ Created on Mon Mar 25 14:21:55 2024
 """
 
 from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint, objective_param,\
-                            compute_min_isi, sim_Q, edge_flux_inf, MaxCal_D, EP, corr_param
+                            compute_min_isi, sim_Q, edge_flux_inf, MaxCal_D, EP, corr_param, sign_corr
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -17,7 +17,7 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 # %% baiscs
-rep_finite = 10  #10 repeat finit oprimization runs
+rep_finite = 1  #10 repeat finit oprimization runs
 N = 3
 nc = 2**3
 num_params = int((N*2**N)) 
@@ -46,6 +46,8 @@ r2_inf = np.zeros(target_dof)
 r2_fin = np.zeros((target_dof, rep_finite))
 ep_inf = np.zeros(target_dof)
 ep_fin = np.zeros((target_dof, rep_finite))
+sign_inf = np.zeros(target_dof)
+sign_fin = np.zeros((target_dof, rep_finite))
 
 ### sort according to inifinite data
 rank_tau = np.argsort(tau_infinite)[::-1]  # ranking occupency
@@ -65,6 +67,7 @@ def run_dof(observations):
     kls = np.zeros(target_dof)
     r2s = np.zeros(target_dof)
     eps = np.zeros(target_dof)
+    sign = np.zeros(target_dof)
     Cp_condition = np.zeros(dofs_all)
     ii = 0
     ### scan through all dof
@@ -89,14 +92,15 @@ def run_dof(observations):
         kls[ii] = MaxCal_D(kij_inf, P0, param)
         eps[ii] = EP(kij_inf)
         r2s[ii] = corr_param(param_true, param, '0')  # non-biniary version!
+        sign[ii] = sign_corr(param_true, param)  # for biniaized sign
         
         print(ii)    
         ii = ii+1
     
-    return kls, r2s, eps, param  # return KL, corr, entropy, and parameters
+    return kls, r2s, sign, eps, param  # return KL, corr, entropy, and parameters
 
 # %% for inifinite data
-kls_inf, r2_inf, ep_inf, param_inf = run_dof(observations_inf)
+kls_inf, r2_inf, sign_inf, ep_inf, param_inf = run_dof(observations_inf)
 
 # %% scanning finite data repeats
 
@@ -108,32 +112,81 @@ for rr in range(rep_finite):
     observations_fin = np.concatenate((tau_f, C_f.reshape(-1))) 
     
     ### run and record
-    kls, r2s, eps, param = run_dof(observations_fin)
+    kls, r2s, sign, eps, param = run_dof(observations_fin)
     kls_fin[:,rr] = kls
     r2_fin[:,rr] = r2s
     ep_fin[:,rr] = eps
+    sign_fin[:,rr] = sign
     print('loop: ', rr)
-    
+
+# %% load data for plot
+# import pickle
+
+# ### Load variables from file
+# with open('scan_dof_15.pkl', 'rb') as f:
+#     loaded_data = pickle.load(f)
+
+# print("Variables loaded successfully:")
+# print(loaded_data)
+
+# ### unpack
+# kls_fin = loaded_data['kls_fin']
+# kls_inf = loaded_data['kls_inf']
+# r2_inf = loaded_data['f2_inf']
+# r2_fin = loaded_data['r2_fin']
+# sign_inf = loaded_data['sign_inf']
+# sign_fin = loaded_data['sign_fin']
+# ep_inf = loaded_data['ep_inf']
+# ep_fin = loaded_data['ep_fin']
+
 # %%
 plt.figure()
 plt.plot(kls_fin,'-o', alpha=0.2, color='k')
 plt.plot(kls_inf,'-o', label='analytic')
-plt.legend(fontsize=20); plt.ylabel('KL', fontsize=20)
-# plt.savefig('KL.pdf')
+plt.legend(fontsize=20); plt.ylabel('KL', fontsize=20); plt.ylim([3.9,6])
+# plt.savefig('KL_ana.pdf')
 
 plt.figure()
 plt.plot(r2_fin,'-o',  alpha=0.2, color='k')
 plt.plot(r2_inf,'-o', label='analytic')
 plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
-# plt.savefig('R2.pdf')
+# plt.savefig('R2_ana.pdf')
+
+plt.figure()
+plt.plot(sign_fin,'-o',  alpha=0.2, color='k')
+plt.plot(sign_inf,'-o', label='analytic')
+plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
+# plt.savefig('R2_sign_ana.pdf')
 
 plt.figure()
 plt.plot(ep_fin,'-o',  alpha=0.2, color='k')
 plt.plot(ep_inf,'-o', label='analytic')
 plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
-# plt.savefig('EP.pdf')
+# plt.savefig('EP_ana.pdf')
 
-    
+plt.figure()
+plt.semilogy(ep_fin,'-o',  alpha=0.2, color='k')
+plt.semilogy(ep_inf,'-o', label='analytic')
+plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
+# plt.savefig('EP_log_ana.pdf')
+
+# %% saving...
+# import pickle
+
+# pre_text = 'scan_dof_10'
+# filename = pre_text +".pkl"
+
+# # Store variables in a dictionary
+# data = {'kls_fin': kls_fin, 'kls_inf': kls_inf, 'r2_fin': r2_fin, 'r2_inf': r2_inf,\
+#         'sign_fin': sign_fin, 'sign_inf':sign_inf, 'ep_fin':ep_fin, 'ep_inf':ep_inf,
+#         'M':M, 'rank_tau':rank_tau, 'rank_C':rank_C}  # save inference, M, and ranks
+
+# # Save variables to a file
+# with open(filename, 'wb') as f:
+#     pickle.dump(data, f)
+
+# print("Variables saved successfully.")
+
 # %%
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # scan for finit data versus KL rate
