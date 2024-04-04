@@ -84,7 +84,7 @@ def param2M(param, N=N, combinations=combinations):
     
     return M, np.real(pi_ss)
 
-def compute_tauC(states, times, nc=nc, combinations=combinations):
+def compute_tauC(states, times, nc=nc, combinations=combinations, lt=None):
     """
     given the emperically measured states, measure occupency tau and the transitions C
     """
@@ -93,7 +93,12 @@ def compute_tauC(states, times, nc=nc, combinations=combinations):
     # compute occupency time
     for i in range(len(states)-1):
         this_state = states[i]
-        tau[this_state] += times[i+1]-times[i]  ### total time occupancy
+        if i==0:
+            tau[this_state] += times[i]  # correct for starting
+        elif lt is not None and i==len(states)-1:
+            tau[this_state] += lt - times[i+1]
+        else:
+            tau[this_state] += times[i+1]-times[i]  ### total time occupancy
         
     # compute transitions
     for t in range(len(states)-1):

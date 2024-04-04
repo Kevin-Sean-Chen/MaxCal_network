@@ -6,7 +6,7 @@ Created on Sat Mar  9 18:48:50 2024
 """
 
 from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint, \
-                            MaxCal_D, objective_param, compute_min_isi
+                            MaxCal_D, objective_param, compute_min_isi, corr_param, sign_corr, P_frw_ctmc, C_P
 
 import scipy.io
 import numpy as np
@@ -20,9 +20,9 @@ matplotlib.rc('ytick', labelsize=20)
 
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
-dataset = 2  # 0-natural, 1-Brownian, 2-repeats
-nid = 1  # neuron example
-reps = 10 #len(mat_data['spike_times'][0][dataset][0])
+dataset = 1  # 0-natural, 1-Brownian, 2-repeats
+nid = 50  # neuron example
+reps = 60 #len(mat_data['spike_times'][0][dataset][0])
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
 spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
 
@@ -35,8 +35,15 @@ for nn in range(reps):
     
 # %%
 N = 3
+nc = 2**N
+spins = [0,1]  # binary patterns
+combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 cell_ids = np.unique(spk_ids[0])
 nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three neurons
+# nids = np.array([16, 40, 31])
+# nids = np.array([24, 13, 10])  # 
+# nids = np.array([1,2,8])
+nids = np.array([50, 31, 13])
 
 # check isi
 # the data is spike timing with 10kHz sampling, so .1ms time resolution
@@ -61,9 +68,14 @@ print(max_lt)
 
 # %% loop across trial and time and neurons
 dt = 0.1
-lt = int(max_lt/dt)
+lt = 5000#int(max_lt/dt)
 firing_s = []  # across repeats!
 
+# for dd in 1:#range(3):   #### try all data!!
+#     spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
+#     spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
+    
+    
 for rr in range(reps):  # repeats
     firing = []
     firing.append((np.array([]), np.array([])))
@@ -82,19 +94,21 @@ for rr in range(reps):  # repeats
         firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
     
     firing_s.append(firing)
-    
+        
 # %% some tests!!
+window = 1000  # .1ms window
 spk_state_all = []
 spk_time_all = []
-spk_states, spk_times = spk2statetime(firing_s[0], 200)
-tau_all, C_all = compute_tauC(spk_states, spk_times)
+spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
+tau_all, C_all = compute_tauC(spk_states, spk_times, lt=lt)
+# (states, times, nc=nc, combinations=combinations, lt=None)
 
-for rr in range(1,reps):
-    spk_states, spk_times = spk2statetime(firing_s[rr], 1000, lt=lt)  # embedding states
+for rr in range(len(firing_s)):
+    spk_states, spk_times = spk2statetime(firing_s[rr], window, lt=lt)  # embedding states
     spk_state_all.append(spk_states)
     spk_time_all.append(spk_times)
     
-    tau,C = compute_tauC(spk_states, spk_times)
+    tau,C = compute_tauC(spk_states, spk_times, lt=lt)
     tau_all += tau
     C_all += C
 
@@ -104,6 +118,49 @@ print(tau_all)
 print(C_all)
 
 # %% building constraints
+# num_params = int((N*2**N))  # number of parameters in model without refractory assumption
+# nc = 2**N  # number of total states of 3-neuron
+# dofs = num_params*1
+# dofs_all = nc**2 + nc
+# target_dof = dofs + nc
+# kls = np.zeros(target_dof) # measure KL
+# Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
+# rank_tau = np.argsort(tau_all)[::-1]  # ranking occupency
+# rank_C = np.argsort(C_all.reshape(-1))[::-1]  # ranking transition
+# # time_norm = len(np.concatenate(spk_time_all))
+# tau_, C_ = tau_all/lt/reps, C_all/lt/reps# time_norm  #lt/reps # correct normalization
+# # tau_, C_ = tau/lt/1, C/lt/1 # correct normalization
+# observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
+# # observations = np.concatenate((C_.reshape(-1), tau_))
+
+# P0 = np.ones((nc,nc))  # uniform prior
+# np.fill_diagonal(P0, np.zeros(nc))
+# np.fill_diagonal(P0, -np.sum(P0,1))
+# ii = 0
+# ### scan through all dof
+# while ii < target_dof:
+#     ### work on tau first
+#     if ii<nc-1:
+#         Cp_condition[rank_tau[ii]] = 1
+#     else:
+#         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
+    
+#     ### run max-cal!
+#     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+#     bounds = [(.0, 100)]*num_params
+
+#     # Perform optimization using SLSQP method
+#     param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+#     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+    
+#     # computed and record the corresponding KL
+#     param_temp = result.x
+#     Pyx,_ = param2M(param_temp)
+#     kls[ii] = MaxCal_D(Pyx, P0, param_temp)
+#     print(ii)    
+#     ii = ii+1
+
+# %%
 num_params = int((N*2**N))  # number of parameters in model without refractory assumption
 nc = 2**N  # number of total states of 3-neuron
 dofs = num_params*1
@@ -111,38 +168,48 @@ dofs_all = nc**2 + nc
 target_dof = dofs + nc
 kls = np.zeros(target_dof) # measure KL
 Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
-rank_tau = np.argsort(tau)[::-1]  # ranking occupency
-rank_C = np.argsort(C.reshape(-1))[::-1]  # ranking transition
-tau_, C_ = tau_all/lt/reps, C_all/lt/reps # correct normalization
+rank_tau = np.argsort(tau_all)[::-1]  # ranking occupency
+rank_C = np.argsort(C_all.reshape(-1))[::-1]  # ranking transition
+# time_norm = len(np.concatenate(spk_time_all))
+new_lt = np.sum(tau_all)
+tau_, C_ = tau_all/new_lt, C_all/new_lt*1 # time_norm  #lt/reps # correct normalization
+# tau_, C_ = tau/lt/1, C/lt/1 # correct normalization
 observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
 # observations = np.concatenate((C_.reshape(-1), tau_))
+
+
+def log_obk(param, kij0):
+    param_ = np.exp(param)
+    obj = objective_param(param_, kij0)
+    return obj
+
+def log_const(param, observations, Cp_condition):
+    param_ = np.exp(param)
+    Pxy = P_frw_ctmc(param_)
+    cp = C_P(Pxy, observations, param_, Cp_condition)
+    return cp #0.5*np.sum(cp**2)
 
 P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, -np.sum(P0,1))
-ii = 0
-### scan through all dof
-while ii < target_dof:
-    ### work on tau first
-    if ii<nc-1:
-        Cp_condition[rank_tau[ii]] = 1
-    else:
-        Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
-    
-    ### run max-cal!
-    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-    bounds = [(.0, 100)]*num_params
+Cp_condition = np.ones(dofs_all)
+### run max-cal!
+constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+bounds = [(.0, 100)]*num_params
+# bounds = [(-100, 100)]*num_params
+# Perform optimization using SLSQP method
+param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+# good_init = (C_/tau_[:,None]).reshape(-1)
+# pos = np.where(good_init!=0)[0]
+# param0 = good_init[pos]
 
-    # Perform optimization using SLSQP method
-    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-    result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-    
-    # computed and record the corresponding KL
-    param_temp = result.x
-    Pyx,_ = param2M(param_temp)
-    kls[ii] = MaxCal_D(Pyx, P0, param_temp)
-    print(ii)    
-    ii = ii+1
+# result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+result = minimize(objective_param, param0, args=(P0), constraints=constraints)
+# result = minimize(log_obk, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+# result = minimize(log_obk, param0, args=(P0), constraints=constraints, bounds=bounds)
+# computed and record the corresponding KL
+# param_temp = np.exp(result.x)
+param_temp = result.x
 
 # %%
 plt.figure()
@@ -153,8 +220,29 @@ plt.title('retina', fontsize=20)
 # plt.savefig('retina_KL.pdf')
 # plt.ylim([0,10])
 
+# %% test cutoff
+# dof_cut = 32
+# ii = 0
+# while ii < dof_cut:
+#     if ii<nc-1:
+#         Cp_condition[rank_tau[ii]] = 1
+#     else:
+#         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
+#     ii+=1
+# constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+# bounds = [(.0, 100)]*num_params
+# param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+# result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+# param_cut = result.x
+
 # %%
-M_inf, pi_inf = param2M(param_temp)
+spins = [0,1]  # binary patterns
+combinations = list(itertools.product(spins, repeat=N))
+M_inf, pi_inf = param2M(param_temp, N, combinations)  #dof_cut
+np.fill_diagonal(M_inf, np.zeros(nc))
+############### hijack
+# M_inf = (C_/tau_[:,None])
+##############
 f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
 w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
 w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
@@ -166,3 +254,83 @@ plt.bar(np.arange(6), inf_w)
 plt.xticks(np.arange(len(categories)), categories)
 plt.title('retina', fontsize=20)
 # plt.savefig('retina_wij.pdf')
+
+# %% check biophysical correspondence
+### (0, fi), (wji, fiewji ), (wki, fiewki ), (wji + wki, fiewjk,i )
+
+plt.figure()
+ws = np.array([0, w21, w31, w21+w31])
+phis = np.array([f1, M_inf[2,6], M_inf[1,5], M_inf[3,7]])
+plt.semilogy(ws, phis,'o', label='neuron1')
+# plt.semilogy(ws[:3], phis[:3])
+ws = np.array([0, w12, w32, w12+w32])
+phis = np.array([f2, M_inf[4,6], M_inf[1,3], M_inf[5,7]])
+plt.semilogy(ws, phis,'o', label='neuron2')
+# plt.semilogy(ws[:3], phis[:3])
+ws = np.array([0, w13, w23, w13+w23])
+phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
+plt.semilogy(ws, phis,'o', label='neuron3')
+# plt.semilogy(ws[:3], phis[:3])
+plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
+# plt.savefig('retina_NL.pdf')
+
+# %% scan effective model
+# corr_final = np.zeros(target_dof)
+# r2s = corr_final*0
+# sign = corr_final*0
+# ii = 0
+# Cp_condition = np.zeros(dofs_all)
+# while ii < target_dof:
+#     ### work on tau first
+#     if ii<nc-1:
+#         Cp_condition[rank_tau[ii]] = 1
+#     else:
+#         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
+    
+#     ### run max-cal!
+#     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+#     bounds = [(.0, 100)]*num_params
+#     param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+#     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+#     param_dof = result.x
+#     r2s[ii] = corr_param(param_temp, param_dof, '0')  # non-biniary version!
+#     sign[ii] = sign_corr(param_temp, param_dof)
+#     print(ii)    
+#     ii = ii+1
+
+# %%
+# plt.figure()
+# plt.plot(r2s,'-o', label='corr')
+# plt.plot(sign,'-o', label='signed corr')
+# plt.xlabel('dof', fontsize=20); plt.legend(fontsize=20); plt.title('retina (compared to full dof)', fontsize=20)
+# # plt.savefig('retina_dof.pdf')
+
+# %% recover transitions from dof
+def dof2trans(ranked_C, cutoff):
+    Mid = np.arange(64).reshape(8,8)
+    trans_list = []
+    for ii in range(cutoff):
+        rank = ranked_C[ii]
+        ij = np.concatenate(np.where(Mid==rank))
+        trans_list.append([combinations[ij[0]] , combinations[ij[1]]])
+    return trans_list
+
+ranked_trans = dof2trans(rank_C,24)
+
+# %%
+# M = np.array([[0,    f3,   f2,   0,              f1,   0,               0,               0],
+#               [r3,   0,    0,    f2*np.exp(w32), 0,    f1*np.exp(w31),  0,               0],
+#               [r2,   0,    0,    f3*np.exp(w23), 0,    0,               f1*np.exp(w21),  0],
+#               [0,    r2,   r3,   0,              0,    0,               0,               f1*np.exp(w231)],
+#               [r1,   0,    0,    0,              0,    f3*np.exp(w13),  f2*np.exp(w12),  0],
+#               [0,    r1,   0,    0,              r3,   0,               0,               f2*np.exp(w132)],
+#               [0,    0,    r1,   0,              r2,   0,               0,               f3*np.exp(w123)],
+#               [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
+
+r1,r2,r3 = M_inf[4,0],M_inf[2,0],M_inf[1,0]
+
+# %% ideas
+# window test
+# response function
+# effective model
+# try 3 out of 5 neurons...

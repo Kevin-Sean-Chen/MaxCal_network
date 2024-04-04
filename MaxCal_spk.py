@@ -45,7 +45,7 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
 S = synaptic_weights*1
 np.fill_diagonal(S, np.zeros(3))
 # synaptic_weights = np.random.randn(3,3)*.8
-noise_amp = 2
+noise_amp = 1.5
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant
@@ -106,11 +106,9 @@ allspktime = np.concatenate(allspktime).squeeze()
 isi = np.diff(allspktime)
 plt.figure()
 aa,bb = np.histogram(isi,30)
-plt.plot(bb[1:],aa,'-o')
+plt.plot(bb[1:],aa/np.sum(aa),'-o'); plt.xlim([0,300])
 # plt.yscale('log')
-
-# %% with Firing data in hand...
-###############################################################################
+# plt.savefig('ISI.pdf')
 
 # %% extract spike time per neuron... can later check ISI distribution
 isi = np.zeros(N)
@@ -155,7 +153,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=150)
+spk_states, spk_times = spk2statetime(firing, window=180)
 plt.figure()
 plt.plot(spk_states)
 
@@ -362,16 +360,94 @@ def invf(x):
     return output
 
 # %% building constraints
+# dofs = num_params*1
+# dofs_all = nc**2 + nc
+# target_dof = dofs + nc
+# kls = np.zeros(target_dof) # measure KL
+# corrs = kls*0
+# eps = kls*0
+# sign = kls*0
+
+# Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
+# rank_tau = np.argsort(tau)[::-1]  # ranking occupency
+# rank_C = np.argsort(C.reshape(-1))[::-1]  # ranking transition
+# tau_, C_ = tau/lt, C/lt # correct normalization
+# observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
+# # observations = np.concatenate((C_.reshape(-1), tau_))
+
+# P0 = np.ones((nc,nc))  # uniform prior
+# np.fill_diagonal(P0, np.zeros(nc))
+# np.fill_diagonal(P0, -np.sum(P0,1))
+# ii = 0
+# ### true params
+# true_wij = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
+
+# ### scan through all dof
+# while ii < target_dof:
+#     ### work on tau first
+#     if ii<nc-1:
+#         Cp_condition[rank_tau[ii]] = 1
+#     else:
+#         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
+    
+#     ### run max-cal!
+#     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+#     bounds = [(.0, 100)]*num_params
+
+#     # Perform optimization using SLSQP method
+#     param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+#     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+    
+#     # computed and record the corresponding KL
+#     param_temp = result.x
+#     kij,_ = param2M(param_temp)
+#     kls[ii] = MaxCal_D(kij, P0, param_temp)
+    
+#     ### check spiking parameters!!!
+#     # load params
+#     M_inf, pi_inf = param2M(param_temp)
+#     f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
+#     w12,w13,w21 = invf(M_inf[4,6]/f2), invf(M_inf[4,5]/f3), invf(M_inf[2,6]/f1)
+#     w23,w32,w31 = invf(M_inf[2,3]/f3), invf(M_inf[1,3]/f2), invf(M_inf[1,5]/f1)
+#     infer_wij = np.array([w12,w13,w21, w23,w32,w31])
+#     corrs[ii] = corr_param(true_wij, infer_wij, '0')  # bin correlation of weights
+#     sign[ii] = corr_param(true_wij, infer_wij, 'binary')
+#     eps[ii] = EP(M_inf)      # inreverssibility
+#     ###
+#     print(ii)    
+#     ii = ii+1
+
+
+# # %%
+# plt.figure()
+# plt.plot(np.log(kls[:]),'-o')
+# plt.xlabel('ranked dof', fontsize=20)
+# plt.ylabel('KL', fontsize=20)
+# # plt.ylim([0,10])
+
+# # %%
+# plt.figure()
+# plt.subplot(131)
+# plt.plot(kls,'-o')
+# # plt.legend(fontsize=20); 
+# plt.ylabel('KL', fontsize=20)
+
+# # plt.figure()
+# plt.subplot(132)
+# plt.plot(corrs,'-o')
+# plt.plot(sign,'-o',label='signed')
+# plt.ylabel('corr', fontsize=20); plt.legend(fontsize=20)
+
+# # plt.figure()
+# plt.subplot(133)
+# plt.plot(eps,'-o')
+# plt.ylabel('EP', fontsize=20)
+# # plt.savefig('spk_record2.pdf')
+
+# %% maxcal inference
 dofs = num_params*1
 dofs_all = nc**2 + nc
-target_dof = dofs + nc
-kls = np.zeros(target_dof) # measure KL
-corrs = kls*0
-eps = kls*0
 
-Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
-rank_tau = np.argsort(tau)[::-1]  # ranking occupency
-rank_C = np.argsort(C.reshape(-1))[::-1]  # ranking transition
 tau_, C_ = tau/lt, C/lt # correct normalization
 observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
 # observations = np.concatenate((C_.reshape(-1), tau_))
@@ -379,51 +455,20 @@ observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simula
 P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
 np.fill_diagonal(P0, -np.sum(P0,1))
-ii = 0
 ### true params
 true_wij = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
 
-### scan through all dof
-while ii < target_dof:
-    ### work on tau first
-    if ii<nc-1:
-        Cp_condition[rank_tau[ii]] = 1
-    else:
-        Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
-    
-    ### run max-cal!
-    constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-    bounds = [(.0, 100)]*num_params
+Cp_condition = np.ones(dofs_all)
+### run max-cal!
+constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+bounds = [(.0, 100)]*num_params
 
-    # Perform optimization using SLSQP method
-    param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-    result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-    
-    # computed and record the corresponding KL
-    param_temp = result.x
-    kij,_ = param2M(param_temp)
-    kls[ii] = MaxCal_D(kij, P0, param_temp)
-    
-    ### check spiking parameters!!!
-    # load params
-    M_inf, pi_inf = param2M(param_temp)
-    f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
-    w12,w13,w21 = invf(M_inf[4,6]/f2), invf(M_inf[4,5]/f3), invf(M_inf[2,6]/f1)
-    w23,w32,w31 = invf(M_inf[2,3]/f3), invf(M_inf[1,3]/f2), invf(M_inf[1,5]/f1)
-    infer_wij = np.array([w12,w13,w21, w23,w32,w31])
-    corrs[ii] = corr_param(true_wij, infer_wij, '0')  # bin correlation of weights
-    eps[ii] = EP(M_inf)      # inreverssibility
-    ###
-    print(ii)    
-    ii = ii+1
+# Perform optimization using SLSQP method
+param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
 
-
-# %%
-plt.figure()
-plt.plot(np.log(kls[:]),'-o')
-plt.xlabel('ranked dof', fontsize=20)
-plt.ylabel('KL', fontsize=20)
-# plt.ylim([0,10])
+# computed and record the corresponding KL
+param_temp = result.x
 
 # %% attempt to compare inferred M and nework W... ask Peter~
 M_inf, pi_inf = param2M(param_temp)
@@ -483,33 +528,34 @@ print(correlation_coefficient)
 plt.figure()
 ws = np.array([0, w21, w31, w21+w31])
 phis = np.array([f1, M_inf[2,6], M_inf[1,5], M_inf[3,7]])
-plt.plot(ws, phis,'o', label='neuron1')
+sort_id = np.argsort(ws)
+plt.semilogy(ws[sort_id], phis[sort_id],'-o', label='neuron1')
 ws = np.array([0, w12, w32, w12+w32])
 phis = np.array([f2, M_inf[4,6], M_inf[1,3], M_inf[5,7]])
-plt.plot(ws, phis,'o', label='neuron2')
+sort_id = np.argsort(ws)
+plt.semilogy(ws[sort_id], phis[sort_id],'-o', label='neuron2')
 ws = np.array([0, w13, w23, w13+w23])
 phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
-plt.plot(ws, phis,'o', label='neuron3')
+sort_id = np.argsort(ws)
+plt.semilogy(ws[sort_id], phis[sort_id],'-o', label='neuron3')
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
-# plt.savefig('x_phi.pdf')
+# plt.savefig('x_philog.pdf')
 
-# %%
-plt.figure()
-plt.subplot(131)
-plt.plot(kls,'-o')
-# plt.legend(fontsize=20); 
-plt.ylabel('KL', fontsize=20)
+# %% saving...
+# import pickle
 
-# plt.figure()
-plt.subplot(132)
-plt.plot(corrs,'-o')
-plt.ylabel('corr', fontsize=20)
+# pre_text = 'LIF_3neuron'
+# filename = pre_text + ".pkl"
 
-# plt.figure()
-plt.subplot(133)
-plt.semilogy(eps,'-o')
-plt.ylabel('EP', fontsize=20)
-# plt.savefig('spk_record2.pdf')
+# # Store variables in a dictionary
+# data = {'synaptic_weights': synaptic_weights, 'param_temp': param_temp, 'firing': firing,\
+#         'M_inf': M_inf, 'inf_w': inf_w, 'true_w':true_wij}
+
+# # Save variables to a file
+# with open(filename, 'wb') as f:
+#     pickle.dump(data, f)
+
+# print("Variables saved successfully.")
 
 # %% notes
 # can try numerical nonlinearity of LIF with synaptic filter
