@@ -178,6 +178,23 @@ def corr_param(param_true, param_infer, mode='binary'):
         correlation_coefficient, _ = pearsonr(true_temp, infer_temp)
         return correlation_coefficient
 
+def sign_corr(param_true, param_infer):
+    """
+    given parameters for CTMC, turn it into matric, then into the effective coupling weights
+    """
+    w_true = M2weights(param_true)
+    w_infer = M2weights(param_infer)
+    corr = corr_param(w_true, w_infer, 'binary')
+    return corr
+    
+def M2weights(param):
+    M_inf, _ = param2M(param)
+    f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
+    w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
+    w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
+    weights = np.array([w12,w13,w21,w23,w32,w31])
+    return weights
+
 # %% Maxcal functions (should write better code and import once confirmed...)
 def MaxCal_D(kij, kij0, param):
     """

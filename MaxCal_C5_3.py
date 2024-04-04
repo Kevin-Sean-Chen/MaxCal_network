@@ -36,14 +36,22 @@ synaptic_3neuron = np.array([[0, 1, -2],  # Neuron 0 connections
                               [1, 1,  0]])*20  #20  # Neuron 2 connections
 
 # random circuit
-hidden_stength = 20  # 2 5 10 15 20
-synaptic_weights = (np.random.rand(N5,N5)+1)*hidden_stength
-sign = np.random.randn(N5,N5); sign[sign>0]=1; sign[sign<0] = -1
+hidden_stength = 40  # 2 5 10 15 20  # 2 10 20 30 40
+### EI structured connections
+synaptic_weights = np.ones((N5,N5))*hidden_stength
+sign = np.ones((N5,N5)); sign[:,-1] *= -2  # make on I cell
+synaptic_weights[3:5,2] = np.array([-2,-2])*20
+
+### random hidden connections
+# synaptic_weights = (np.random.rand(N5,N5)+1)*hidden_stength
+# sign = np.random.randn(N5,N5); sign[sign>0]=1; sign[sign<0] = -1
+
 synaptic_weights = synaptic_weights*sign
 S = synaptic_3neuron[:3,:3]*1
 synaptic_weights[:3,:3] = synaptic_3neuron*1  # fix for 3 neurons
 
 np.fill_diagonal(S, np.zeros(N))
+np.fill_diagonal(synaptic_weights, np.zeros(N5))
 # synaptic_weights = np.random.randn(3,3)*.8
 noise_amp = 2
 
@@ -464,17 +472,41 @@ plt.colorbar()
 # %% loading past data
 # import pickle
 
+# h_str = 2  #2,10,20,30,40
 # # Load variables from file
-# with open('C5_3neuron_10.pkl', 'rb') as f:
+# with open('C5_3neuron_'+str(h_str)+'.pkl', 'rb') as f:
 #     loaded_data = pickle.load(f)
 
 # print("Variables loaded successfully:")
-# print(loaded_data)
+# print(loaded_data['corr_coeff'])
+
+# print(corr_param(loaded_data['true_w'], loaded_data['inf_w'], 'binary'))
+
+# inf_w_ = loaded_data['inf_w']
+# plt.figure()
+# plt.subplot(211)
+# plt.bar(bar_positions_group1, [S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]], width=bar_width)
+# plt.bar(np.arange(4),[S[1,0],S[2,0],S[0,1],S[2,1]],width=bar_width,color='orange')
+# plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
+# plt.ylabel('true weights', fontsize=20)
+# plt.subplot(212)
+# plt.bar(bar_positions_group1, inf_w_, width=bar_width)
+# plt.bar(np.arange(4), inf_w_[:4], width=bar_width,color='orange') ## for E cells
+# plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
+# plt.ylabel('MaxCal inferred', fontsize=20)
+# plt.savefig('3_of_5_'+str(h_str)+'.pdf')
 
 # %%
-hidden_str = np.array([20,15,10,5,2])/20
+# hidden_str = np.array([20,15,10,5,2])/20
+hidden_str = np.array([40,30,20,10,2])/20
 plt.figure()
-plt.plot(hidden_str, np.array([0.74,0.86,0.91,0.95,0.98]),'-o')
-plt.plot(hidden_str, np.array([0.70,0.73,0.82,0.91,0.98]),'-o')
+# plt.plot(hidden_str, np.array([0.74,0.86,0.91,0.95,0.98]),'-o')
+# plt.plot(hidden_str, np.array([0.70,0.73,0.82,0.91,0.98]),'-o')
+plt.plot(hidden_str, np.array([.6775467031709071, .8706646317156895, .9214852480402794,\
+                               .9843874043062822, .9908173400126193]),'-o', label='corr')
+plt.plot(hidden_str, np.array([-0.3333333333333334, .0, 0.6666666666666669,\
+                               1., 1.]),'-o', label='signed corr')
+    
 plt.xlabel('hidden/structure strength', fontsize=20)
-plt.ylabel('correlation coefficient', fontsize=20)
+plt.ylabel('correlation coefficient', fontsize=20); plt.legend(fontsize=20)
+# plt.savefig('3_of_5_error2.pdf')
