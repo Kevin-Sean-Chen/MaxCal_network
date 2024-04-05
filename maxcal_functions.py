@@ -26,6 +26,70 @@ spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 lt = 30000
 
+# %% make blocks for contraints
+def word_id(word):
+    return combinations.index(word)
+
+def constraint_blocks_3N(ith):
+    Mid = np.arange(nc**2).reshape(nc,nc)
+    dofs_all = nc**2 + nc
+    Cp_condition = np.zeros(dofs_all)
+    ii = 1
+    ### tau
+    Cp_condition[:nc] = np.ones(nc)
+    if ii==ith:
+        return Cp_condition
+    ii = ii+1
+    ### f
+    Cp_condition[Mid[ word_id((0,0,0)) , word_id((0,0,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((0,0,0)) , word_id((0,1,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((0,0,0)) , word_id((1,0,0)) ]+nc] = 1
+    if ii==ith:
+        return Cp_condition
+    ii = ii+1
+    ### fw
+    Cp_condition[Mid[ word_id((0,0,1)) , word_id((0,1,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((0,0,1)) , word_id((1,0,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((0,1,0)) , word_id((0,1,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((0,1,0)) , word_id((1,1,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,0,0)) , word_id((1,0,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,0,0)) , word_id((1,1,0)) ]+nc] = 1
+    if ii==ith:
+        return Cp_condition
+    ii = ii+1
+    ### fw_ijk
+    Cp_condition[Mid[ word_id((0,1,1)) , word_id((1,1,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,0,1)) , word_id((1,1,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,1,0)) , word_id((1,1,1)) ]+nc] = 1
+    if ii==ith:
+        return Cp_condition
+    ii = ii+1
+    ### r
+    Cp_condition[Mid[ word_id((0,0,1)) , word_id((0,0,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((0,1,0)) , word_id((0,0,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,0,0)) , word_id((0,0,0)) ]+nc] = 1
+    if ii==ith:
+        return Cp_condition
+    ii = ii+1
+    ### ru
+    Cp_condition[Mid[ word_id((0,1,1)) , word_id((0,1,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((0,1,1)) , word_id((0,0,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,0,1)) , word_id((0,0,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,0,1)) , word_id((1,0,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,1,0)) , word_id((1,0,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,1,0)) , word_id((0,1,0)) ]+nc] = 1
+    if ii==ith:
+        return Cp_condition
+    ii = ii+1
+    ### ru_ijk
+    Cp_condition[Mid[ word_id((1,1,1)) , word_id((1,1,0)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,1,1)) , word_id((1,0,1)) ]+nc] = 1
+    Cp_condition[Mid[ word_id((1,1,1)) , word_id((0,1,1)) ]+nc] = 1
+    if ii==ith:
+        return Cp_condition
+    ii = ii+1
+    
+
 # %%
 def spk2statetime(firing, window, lt=lt, N=N, combinations=combinations):
     """
@@ -208,7 +272,7 @@ def MaxCal_D(kij, kij0, param):
     """
     pi = get_stationary(kij)
     # kij = Pij / pi[:,None]
-    eps = 1e-11
+    eps = 1e-30
     kl = 0
     n = len(pi)
     for ii in range(n):
@@ -299,6 +363,67 @@ def sim_Q(Q, total_time, time_step):
         current_time = next_time
 
     return np.array(states), np.array(times)
+
+# %% LIF model
+def LIF_firing(lt):
+    """
+    given synaptic weights and noise amplitude, turn 3-neuron spiking time series
+    """
+    dt = 0.1  # time step in milliseconds
+    timesteps = lt*1  #30000  # total simulation steps
+
+    # Neuron parameters
+    tau = 10.0  # membrane time constant
+    v_rest = -65.0  # resting membrane potential
+    v_threshold = -50.0  # spike threshold
+    v_reset = -65.0  # reset potential after a spike
+
+    # Synaptic weight matrix
+    synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
+                                  [1, 0, -2],  # Neuron 1 connections
+                                  [1, 1, 0]])*20  #20  # Neuron 2 connections
+    # synaptic_weights = (np.random.rand(3,3)+1)*20
+    # sign = np.random.randn(3,3); sign[sign>0]=1; sign[sign<0] = -1
+    # synaptic_weights = synaptic_weights*sign
+    S = synaptic_weights*1
+    np.fill_diagonal(S, np.zeros(3))
+    noise_amp = 2
+
+    # Synaptic filtering parameters
+    tau_synaptic = 5.0  # synaptic time constant
+
+    # Initialize neuron membrane potentials and synaptic inputs
+    v_neurons = np.zeros((3, timesteps))
+    synaptic_inputs = np.zeros((3, timesteps))
+    spike_times = []
+    firing = []
+    firing.append((np.array([]), np.array([]))) # init
+
+    # Simulation loop
+    for t in range(1, timesteps):
+
+        # Update neuron membrane potentials using leaky integrate-and-fire model
+        v_neurons[:, t] = v_neurons[:, t - 1] + dt/tau*(v_rest - v_neurons[:, t - 1]) + np.random.randn(3)*noise_amp
+        
+        # Check for spikes
+        spike_indices = np.where(v_neurons[:, t] > v_threshold)[0]
+        
+        # Apply synaptic connections with synaptic filtering
+        synaptic_inputs[:, t] = synaptic_inputs[:, t-1] + dt*( \
+                                -synaptic_inputs[:, t-1]/tau_synaptic + np.sum(synaptic_weights[:, spike_indices], axis=1))
+        # synaptic_inputs[:, t] = np.sum(synaptic_weights[:, spike_indices], axis=1)
+        # Update membrane potentials with synaptic inputs
+        v_neurons[:, t] += synaptic_inputs[:, t]*dt
+        
+        # record firing
+        firing.append([t+0*spike_indices, spike_indices])
+        
+        # reset and record spikes
+        v_neurons[spike_indices, t] = v_reset  # Reset membrane potential for neurons that spiked
+        if len(spike_indices) > 0:
+            spike_times.append(t * dt)
+    
+    return firing
 
 # %% function calling
 # if __name__ == "__main__":
