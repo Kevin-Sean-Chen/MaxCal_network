@@ -20,8 +20,8 @@ matplotlib.rc('ytick', labelsize=20)
 
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
-dataset = 1  # 0-natural, 1-Brownian, 2-repeats
-nid = 50  # neuron example
+dataset = 2  # 0-natural, 1-Brownian, 2-repeats
+nid = 15  # neuron example
 reps = 60 #len(mat_data['spike_times'][0][dataset][0])
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
 spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
@@ -32,7 +32,7 @@ for nn in range(reps):
     spki = spk_ids[nn].squeeze()
     pos = np.where(spki==nid)[0]
     plt.plot(spkt[pos], np.ones(len(pos))+nn,'k.')
-    
+
 # %%
 N = 3
 nc = 2**N
@@ -41,10 +41,24 @@ combinations = list(itertools.product(spins, repeat=N))  # possible configuratio
 cell_ids = np.unique(spk_ids[0])
 nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three neurons
 # nids = np.array([16, 40, 31])
-nids = np.array([24, 13, 10])  # 
-# nids = np.array([1,2,8])
+# nids = np.array([24, 13, 15])  # ,,10
+# nids = np.array([1,13,27])
 # nids = np.array([50, 31, 13]) ###
+### array([21,  2, 27], dtype=uint8)
+nids = np.array([3, 34, 13])  #3,34,13
 
+# %% plot three neuron for Peter
+trial_id = 0
+plt.figure()
+for nn in range(3):
+    ni = nn*1 #
+    # ni = nids[nn]
+    spkt = spk_data[trial_id].squeeze()
+    spki = spk_ids[trial_id].squeeze()
+    pos = np.where(spki==ni)[0]
+    plt.plot(spkt[pos], np.ones(len(pos))+nn,'k.')
+
+# %%
 # check isi
 # the data is spike timing with 10kHz sampling, so .1ms time resolution
 # minisi = np.zeros((N,reps))
@@ -67,11 +81,11 @@ print(minisi_)
 print(max_lt)
 
 # %% loop across trial and time and neurons
-dt = 1.5#0.1
-lt = 10000#int(max_lt/dt)
+dt = 1 #0.1
+lt = int(10000/dt) #int(max_lt/dt)
 firing_s = []  # across repeats!
 
-# for dd in 1:#range(3):   #### try all data!!
+# for dd in range(3):   #### try all data!!
 #     spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
 #     spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
     
@@ -94,9 +108,16 @@ for rr in range(reps):  # repeats
         firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
     
     firing_s.append(firing)
+
+# %% checking raster
+# plt.figure()
+# temp = firing_s[0]
+# for ii in range(len(temp)):
+#     if len(temp[ii][1])>0:
+#         plt.plot(ii, temp[ii][1], 'k.')
         
 # %% some tests!!
-window = 200  # .1ms window
+window = int(20/dt)  # .1ms window
 spk_state_all = []
 spk_time_all = []
 spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
@@ -160,7 +181,7 @@ print(C_all)
 #     print(ii)    
 #     ii = ii+1
 
-# %%
+# %% full-dof for checking performance
 num_params = int((N*2**N))  # number of parameters in model without refractory assumption
 nc = 2**N  # number of total states of 3-neuron
 dofs = num_params*1
@@ -172,6 +193,9 @@ rank_tau = np.argsort(tau_all)[::-1]  # ranking occupency
 rank_C = np.argsort(C_all.reshape(-1))[::-1]  # ranking transition
 # time_norm = len(np.concatenate(spk_time_all))
 new_lt = np.sum(tau_all)
+C_base,_ = param2M(np.ones(num_params))
+np.fill_diagonal(C_base, np.zeros(nc))
+C_all = C_all+C_base
 tau_, C_ = tau_all/new_lt, C_all/new_lt*1 # time_norm  #lt/reps # correct normalization
 # tau_, C_ = tau/lt/1, C/lt/1 # correct normalization
 observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
@@ -198,13 +222,13 @@ constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_co
 bounds = [(.0, 100)]*num_params
 # bounds = [(-100, 100)]*num_params
 # Perform optimization using SLSQP method
-param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+param0 = np.ones(num_params)*.01 + np.random.rand(num_params)*0.0
 # good_init = (C_/tau_[:,None]).reshape(-1)
 # pos = np.where(good_init!=0)[0]
 # param0 = good_init[pos]
 
-# result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-result = minimize(objective_param, param0, args=(P0), constraints=constraints)
+result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+# result = minimize(objective_param, param0, args=(P0), constraints=constraints)
 # result = minimize(log_obk, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
 # result = minimize(log_obk, param0, args=(P0), constraints=constraints, bounds=bounds)
 # computed and record the corresponding KL
@@ -241,7 +265,7 @@ combinations = list(itertools.product(spins, repeat=N))
 M_inf, pi_inf = param2M(param_temp, N, combinations)  #dof_cut
 np.fill_diagonal(M_inf, np.zeros(nc))
 ############### hijack
-# M_inf = (C_/tau_[:,None])
+M_inf = (C_/tau_[:,None])
 ##############
 f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
 w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
@@ -252,8 +276,8 @@ categories = ['w12','w13','w21','w23','w32','w31']
 plt.figure()
 plt.bar(np.arange(6), inf_w)
 plt.xticks(np.arange(len(categories)), categories)
-plt.title('retina', fontsize=20)
-# plt.savefig('retina_wij.pdf')
+plt.title('retina (B=20ms)', fontsize=20)
+# plt.savefig('retina_wij_20.pdf')
 
 # %% check biophysical correspondence
 ### (0, fi), (wji, fiewji ), (wki, fiewki ), (wji + wki, fiewjk,i )

@@ -157,12 +157,13 @@ def compute_tauC(states, times, nc=nc, combinations=combinations, lt=None):
     # compute occupency time
     for i in range(len(states)-1):
         this_state = states[i]
-        if i==0:
-            tau[this_state] += times[i]  # correct for starting
-        elif lt is not None and i==len(states)-1:
-            tau[this_state] += lt - times[i+1]
-        else:
-            tau[this_state] += times[i+1]-times[i]  ### total time occupancy
+        # if i==0:
+        #     tau[this_state] += times[i]  # correct for starting
+        # #### check this~~~
+        # elif lt is not None and i==len(states)-1:
+        #     tau[this_state] += lt - times[i+1]
+        # else:
+        tau[this_state] += times[i+1]-times[i]  ### total time occupancy
         
     # compute transitions
     for t in range(len(states)-1):
