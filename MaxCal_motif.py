@@ -39,14 +39,14 @@ synaptic_weights = np.array([[0, 0, 1],  # Neuron 0 connections
                               [0, 1, 0]])*20  #20  # Neuron 2 connections
 
 # common circuit
-synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
-                              [1, 0, 0],  # Neuron 1 connections
-                              [1, 0, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
+#                               [1, 0, 0],  # Neuron 1 connections
+#                               [1, 0, 0]])*20  #20  # Neuron 2 connections
 
 # chain circuit
-synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
-                              [1, 0, 0],  # Neuron 1 connections
-                              [0, 1, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
+#                               [1, 0, 0],  # Neuron 1 connections
+#                               [0, 1, 0]])*20  #20  # Neuron 2 connections
 
 # random circuit
 # synaptic_weights = (np.random.rand(3,3)+1)*20
@@ -164,7 +164,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=120)
+spk_states, spk_times = spk2statetime(firing, window=150)  #100,120,150,170,200
 plt.figure()
 plt.plot(spk_states)
 
@@ -447,3 +447,83 @@ phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
 plt.plot(ws, phis,'o', label='neuron3')
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
 # plt.savefig('x_phi.pdf')
+
+# %% check w_ijk, r, and u
+
+# M = np.array([[0,    f3,             f2,             0,               f1,             0,               0,               0],
+#               [r3,   0,              0,              f2*np.exp(w32),  0,              f1*np.exp(w31),  0,               0],
+#               [r2,   0,              0,              f3*np.exp(w23),  0,              0,               f1*np.exp(w21),  0],
+#               [0,    r2*np.exp(u32), r3*np.exp(u23), 0,               0,              0,               0,               f1*np.exp(w231)],
+#               [r1,   0,              0,              0,               0,              f3*np.exp(w13),  f2*np.exp(w12),  0],
+#               [0,    r1*np.exp(u31), 0,              0,               r3*np.exp(u13), 0,               0,               f2*np.exp(w132)],
+#               [0,    0,              r1*np.exp(u21), 0,               r2*np.ep(u12),  0,               0,               f3*np.exp(w123)],
+#               [0,    0,              0,              r1*np.exp(u231), 0,              r2*np.exp(u132), r3*np.exp(u123),  0]]) 
+
+r1,r2,r3 = M_inf[4,0], M_inf[2,0], M_inf[1,0]
+u12,u13,u21 = -invf(M_inf[6,4]/r2), -invf(M_inf[5,4]/r3), -invf(M_inf[6,2]/r1)
+u23,u32,u31 = -invf(M_inf[3,2]/r3), -invf(M_inf[3,1]/r2), -invf(M_inf[5,1]/r1)
+
+us_vec = np.array([u12,u13,u21,u23,u32,u31])
+us_infer = ['u12','u13','u21','u23','u32','u31']
+bar_width = 0.35
+bar_positions_group2 = np.arange(6)
+plt.figure()
+plt.subplot(211)
+plt.bar(us_infer, us_vec, width=bar_width)
+# plt.bar(np.arange(4),us_vec[:4],width=bar_width,color='orange')
+plt.plot(us_infer, bar_positions_group2*0, 'k')
+plt.ylabel('inferred refractory', fontsize=10)
+# plt.savefig('infer_u.pdf')
+
+# %% check higher order
+w231, w132, w123 = invf(M_inf[3,7]/f1), invf(M_inf[5,7]/f2), invf(M_inf[6,7]/f3)
+u231, u132, u123 = -invf(M_inf[7,3]/r1), -invf(M_inf[7,5]/r2), -invf(M_inf[7,6]/r3)
+
+ijk_vec = np.array([w231, w132, w123  ,u231, u132, u123])
+ijk_infer = ['w231','w132','w123','u231','u132','u123']
+bar_width = 0.35
+bar_positions_group2 = np.arange(6)
+plt.figure()
+plt.subplot(211)
+plt.bar(ijk_infer, ijk_vec, width=bar_width)
+plt.plot(ijk_infer, bar_positions_group2*0, 'k')
+plt.ylabel('inferred refractory', fontsize=10)
+# plt.savefig('infer_ijk.pdf')
+
+# %% effective
+eff31 = w231-w21
+eff32 = w132-w12
+eff21 = w231-w31
+eff23 = w123-w13
+eff12 = w132-w32
+eff13 = w123-w23
+
+eff_vec = np.array([eff12, eff13, eff21  ,eff23, eff31, eff32])
+eff_infer = ['eff12','eff13','eff21','eff23','eff31','eff32']
+bar_width = 0.35
+bar_positions_group2 = np.arange(6)
+plt.figure()
+plt.subplot(211)
+plt.bar(eff_infer, eff_vec, width=bar_width)
+plt.plot(eff_infer, bar_positions_group2*0, 'k')
+# plt.bar(np.arange(4),eff_vec[:4],width=bar_width,color='orange')
+plt.ylabel('effective coupling', fontsize=10)
+# plt.savefig('infer_eff.pdf')
+
+# %% saving
+# import pickle
+
+# motif_type = 'cyclic'  ### change this!
+# pre_text = 'motif_'+motif_type
+# filename = pre_text + ".pkl"
+
+# # Store variables in a dictionary
+# data = {'firing': firing, 'synaptic_weights': synaptic_weights, 'M_inf': M_inf,\
+#         'S': S, 'param_temp':param_temp}
+
+# # Save variables to a file
+# with open(filename, 'wb') as f:
+#     pickle.dump(data, f)
+
+# print("Variables saved successfully.")
+
