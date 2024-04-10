@@ -24,7 +24,8 @@ import pickle
 
 motif_type = 'common'  # common, chain, cyclic
 
-with open('data_pkl/motif_'+motif_type+'.pkl', 'rb') as f:  
+# with open('data_pkl/motif_'+motif_type+'.pkl', 'rb') as f:  
+with open('data_pkl/C4_3neuron_LIF_match.pkl', 'rb') as f:  
     loaded_data = pickle.load(f)
     
 firing = loaded_data['firing']
@@ -51,11 +52,11 @@ def make_bin(indices):
             binary_tuple = tuple(binary_list)
     return binary_tuple
 
-def coarse_grain_tauC(ijk, tau=tau, C=C.T):
+def coarse_grain_tauC(ijk, tau=tau, C=C):
     """
     return coupling that is i->j ignoring k
     """
-    i,j,k = ijk
+    j,i,k = ijk
     gnd = (0,0,0)
     f = (C[word_id(gnd) , word_id(make_bin([i])) ] + C[word_id(make_bin([k])) , word_id(make_bin([i,k])) ]) \
           /(tau[word_id(gnd)]+tau[word_id(make_bin([k]))])
@@ -83,7 +84,7 @@ plt.subplot(212)
 plt.bar(bar_positions_group1, np.array([weff12,weff13,weff21,weff23,weff32,weff31])+0, width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('MaxCal inferred', fontsize=20)
-# plt.savefig('3I_common_B20.pdf')
+# plt.savefig('LIF_infer_CG2.pdf')
 
 # %% debug
 f = (C[word_id(((0,0,0))) , word_id((1,0,0)) ] + C[word_id((0,0,1)) , word_id((1,0,1)) ]) \
@@ -118,4 +119,4 @@ plt.subplot(212)
 plt.bar(bar_positions_group1, np.array([w12,w13,w21,w23,w32,w31])+0, width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('MaxCal inferred', fontsize=20)
-# plt.savefig('infer_w_chain.pdf')
+# plt.savefig('infer_w_common.pdf')

@@ -18,18 +18,20 @@ matplotlib.rc('ytick', labelsize=20)
 # to test common input effects, now the 4th neuron is common upstream from three neurons
 # that are not coupled... we aim to test how strength and window size might affect the spurious weights
 
+# new modification to let ISI closer to sparse retinal firing patterns for window scanning
+
 # %% LIF model
 # Simulation parameters
 N4 = 4  # for 4-neuron similation
 N = 3  # for subsampling MaxCal
 dt = 0.1  # time step in milliseconds
-timesteps = 100000  # total simulation steps
+timesteps = 150000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
-tau = 10.0  # membrane time constant
+tau = 10.0*1.  # membrane time constant
 v_rest = -65.0  # resting membrane potential
-v_threshold = np.array([-50, -50, -50, -50])  # spike threshold for each neuron
+v_threshold = np.array([-50, -50, -50, -50])+0  # spike threshold for each neuron #-50
 v_threshold_plot = -50  # for simple visualization
 v_reset = -65.0  # reset potential after a spike
 
@@ -39,6 +41,12 @@ hs = .1  #hidden_stength
 synaptic_weights = np.array([[0, -2, -2, hs],  # Neuron 1 connections
                              [-2, 0, -2, hs],
                              [-2, -2, 0, hs],
+                             [0, 0, 0, 0],])*20  #20  # Neuron 2 connections
+
+### for matching retina!!! RGC: 3,34,14
+synaptic_weights = np.array([[0, 1, -2, hs],  # Neuron 1 connections
+                             [1, 0, -2, hs],
+                             [-.5, -.5, 0, hs],
                              [0, 0, 0, 0],])*20  #20  # Neuron 2 connections
 
 # # random circuit
@@ -59,7 +67,7 @@ S = synaptic_weights[:3,:3]*1
 noise_amp = 2
 
 # Synaptic filtering parameters
-tau_synaptic = 5.0  # synaptic time constant
+tau_synaptic = 5.0*1  # synaptic time constant
 
 # Initialize neuron membrane potentials and synaptic inputs
 v_neurons = np.zeros((N4, timesteps))
@@ -164,7 +172,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=100)
+spk_states, spk_times = spk2statetime(firing, window=120)
 plt.figure()
 plt.plot(spk_states)
 
@@ -429,14 +437,16 @@ plt.bar(bar_positions_group1, np.array([w12,w13,w21,w23,w32,w31])+0, width=bar_w
 # plt.bar(np.arange(4), np.array([w12,w13,w21,w23])+0, width=bar_width,color='orange') ## for E cells
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('MaxCal inferred', fontsize=20)
-# plt.savefig('3I_common_B20.pdf')
+# plt.savefig('LIF_infer_CG.pdf')
 
 # %%
 plt.figure()
 plt.bar(np.arange(6), np.array([w12,w13,w21,w23,w32,w31]))
 plt.xticks(np.arange(len(bar_positions_group1)), bar_positions_group1)
-plt.title('LIF (B=10ms)', fontsize=20)
-# plt.savefig('3I_common_B10.pdf')
+plt.title('LIF (B=100ms)', fontsize=20)
+plt.ylim([-3.5, 2.2])
+# plt.ylim([-4.5, 0.1])
+# plt.savefig('3I_common_B20.pdf')
 
 # %%
 inf_w = np.array([w12,w13,w21,w23,w32,w31])
@@ -469,12 +479,12 @@ plt.colorbar()
 # %% saving...
 # import pickle
 
-# pre_text = 'C4_3neuron_Iwindow'
+# pre_text = 'C4_3neuron_LIF_match'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
-# data = {'5_wij': synaptic_weights, 'firing': firing,\
-#         'M_inf': M_inf, 'inf_w': inf_w, 'true_w':true_wij}
+# data = {'4_wij': synaptic_weights, 'firing': firing,\
+#         'M_inf': M_inf, 'inf_w': inf_w, 'true_w':true_wij, 'S':S}
 
 # # Save variables to a file
 # with open(filename, 'wb') as f:
@@ -485,9 +495,8 @@ plt.colorbar()
 # %% loading past data
 # import pickle
 
-# h_str = 2  #2,10,20,30,40
-# # Load variables from file
-# with open('C5_3neuron_'+str(h_str)+'.pkl', 'rb') as f:
+
+# with open('C4_3neuron_Iwindow.pkl', 'rb') as f:
 #     loaded_data = pickle.load(f)
 
 # print("Variables loaded successfully:")
