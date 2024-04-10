@@ -6,7 +6,8 @@ Created on Sat Mar  9 18:48:50 2024
 """
 
 from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint, \
-                            MaxCal_D, objective_param, compute_min_isi, corr_param, sign_corr, P_frw_ctmc, C_P
+                            MaxCal_D, objective_param, compute_min_isi, corr_param, sign_corr, P_frw_ctmc, C_P,\
+                            word_id
 
 import scipy.io
 import numpy as np
@@ -20,8 +21,8 @@ matplotlib.rc('ytick', labelsize=20)
 
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
-dataset = 2  # 0-natural, 1-Brownian, 2-repeats
-nid = 15  # neuron example
+dataset = 1  # 0-natural, 1-Brownian, 2-repeats
+nid = 1  # neuron example
 reps = 60 #len(mat_data['spike_times'][0][dataset][0])
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
 spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
@@ -48,15 +49,18 @@ nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three 
 nids = np.array([3, 34, 13])  #3,34,13
 
 # %% plot three neuron for Peter
-trial_id = 0
+trial_id = 3
 plt.figure()
 for nn in range(3):
-    ni = nn*1 #
-    # ni = nids[nn]
+    # ni = nn*1 #
+    ni = nids[nn]
     spkt = spk_data[trial_id].squeeze()
     spki = spk_ids[trial_id].squeeze()
     pos = np.where(spki==ni)[0]
     plt.plot(spkt[pos], np.ones(len(pos))+nn,'k.')
+    plt.xlim([0,15000])
+
+# plt.savefig('retina_spk_exp.pdf')
 
 # %%
 # check isi
@@ -117,7 +121,7 @@ for rr in range(reps):  # repeats
 #         plt.plot(ii, temp[ii][1], 'k.')
         
 # %% some tests!!
-window = int(20/dt)  # .1ms window
+window = int(50/dt)  # .1ms window
 spk_state_all = []
 spk_time_all = []
 spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
@@ -352,6 +356,54 @@ ranked_trans = dof2trans(rank_C,24)
 #               [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
 
 r1,r2,r3 = M_inf[4,0],M_inf[2,0],M_inf[1,0]
+
+# %% coarse graining
+def make_bin(indices):
+    binary_tuple = (0, 0, 0)
+    indices = [index - 1 for index in indices]
+    for index in indices:
+        # Check if index is within the valid range
+        if 0 <= index < 3:
+            # Convert tuple to list to modify the element
+            binary_list = list(binary_tuple)
+            binary_list[index] = 1
+            # Convert back to tuple
+            binary_tuple = tuple(binary_list)
+    return binary_tuple
+
+def coarse_grain_tauC(ijk, tau=tau_all, C=C_all):
+    """
+    return coupling that is i->j ignoring k
+    """
+    j,i,k = ijk
+    gnd = (0,0,0)
+    f = (C[word_id(gnd) , word_id(make_bin([i])) ] + C[word_id(make_bin([k])) , word_id(make_bin([i,k])) ]) \
+          /(tau[word_id(gnd)]+tau[word_id(make_bin([k]))])
+    fexpw = (C[word_id(make_bin([j])) , word_id(make_bin([i,j])) ] + C[word_id(make_bin([j,k])) , word_id((1,1,1)) ]) \
+          /(tau[word_id(make_bin([j]))]+tau[word_id(make_bin([j,k]))])
+    weff = np.log(fexpw/f)
+    return weff
+
+# %% retrieve
+weff12,weff13,weff21 = coarse_grain_tauC((1,2,3)), coarse_grain_tauC((1,3,2)), coarse_grain_tauC((2,1,3))
+weff23,weff32,weff31 = coarse_grain_tauC((2,3,1)), coarse_grain_tauC((3,2,1)), coarse_grain_tauC((3,1,2))
+
+# %%
+bar_width = 0.35
+bar_positions_group2 = np.arange(6)
+bar_positions_group1 = ['cg12','cg13','cg21','cg23','cg32','cg31']
+
+plt.figure()
+plt.subplot(211)
+plt.bar(categories, inf_w, width=bar_width)
+plt.plot(categories, bar_positions_group2*0, 'k')
+plt.ylabel('inferred', fontsize=20)
+
+plt.subplot(212)
+plt.bar(bar_positions_group1, np.array([weff12,weff13,weff21,weff23,weff32,weff31])+0, width=bar_width)
+plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
+plt.ylabel('coarse grain', fontsize=20)
+# plt.savefig('retina_infer_CG.pdf')
 
 # %% ideas
 # window test

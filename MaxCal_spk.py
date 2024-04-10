@@ -34,6 +34,11 @@ v_reset = -65.0  # reset potential after a spike
 synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
                              [1, 1,  0]])*20  #20  # Neuron 2 connections
+
+# # for retina! RGC 3,34,13
+# synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
+#                              [1, 0, -2],  # Neuron 1 connections
+#                              [-1, -1,  0]])*20  #20  # Neuron 2 connections
 # cyclic circuit
 # synaptic_weights = np.array([[0, 1, -1],  # Neuron 0 connections
 #                               [-1, 0, 1],  # Neuron 1 connections
