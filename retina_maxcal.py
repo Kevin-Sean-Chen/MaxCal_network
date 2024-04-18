@@ -121,7 +121,7 @@ for rr in range(reps):  # repeats
 #         plt.plot(ii, temp[ii][1], 'k.')
         
 # %% some tests!!
-window = int(50/dt)  # .1ms window
+window = int(30/dt)  # .1ms window
 spk_state_all = []
 spk_time_all = []
 spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
