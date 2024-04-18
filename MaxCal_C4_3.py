@@ -29,7 +29,7 @@ timesteps = 150000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
-tau = 10.0*1.  # membrane time constant
+tau = 10.0*5.  # membrane time constant  #1.
 v_rest = -65.0  # resting membrane potential
 v_threshold = np.array([-50, -50, -50, -50])+0  # spike threshold for each neuron #-50
 v_threshold_plot = -50  # for simple visualization
@@ -37,7 +37,7 @@ v_reset = -65.0  # reset potential after a spike
 
 # Synaptic weight matrix
 # E-I balanced circuit
-hs = .1  #hidden_stength
+hs = 2  #hidden_stength  #0.1
 synaptic_weights = np.array([[0, -2, -2, hs],  # Neuron 1 connections
                              [-2, 0, -2, hs],
                              [-2, -2, 0, hs],
@@ -48,6 +48,12 @@ synaptic_weights = np.array([[0, 1, -2, hs],  # Neuron 1 connections
                              [1, 0, -2, hs],
                              [-.5, -.5, 0, hs],
                              [0, 0, 0, 0],])*20  #20  # Neuron 2 connections
+
+### matching with heterogenous input!!!
+synaptic_weights = np.array([[0, 0, 0, -2.],
+                             [0, 0, 0, -2.],
+                             [0, 0, 0, 1],
+                             [0, 0, 0, 0]])  # no couoling 1-3, 4th neuron has ON or OFF input to them, with variable strength...
 
 # # random circuit
 # hidden_stength = 40  # 2 5 10 15 20  # 2 10 20 30 40
@@ -68,6 +74,7 @@ noise_amp = 2
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0*1  # synaptic time constant
+tau_synaptic = np.array([50, 50, 5, 5])  # trying different filteringf
 
 # Initialize neuron membrane potentials and synaptic inputs
 v_neurons = np.zeros((N4, timesteps))
@@ -172,7 +179,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=120)
+spk_states, spk_times = spk2statetime(firing, window=200)
 plt.figure()
 plt.plot(spk_states)
 
@@ -443,10 +450,11 @@ plt.ylabel('MaxCal inferred', fontsize=20)
 plt.figure()
 plt.bar(np.arange(6), np.array([w12,w13,w21,w23,w32,w31]))
 plt.xticks(np.arange(len(bar_positions_group1)), bar_positions_group1)
-plt.title('LIF (B=100ms)', fontsize=20)
-plt.ylim([-3.5, 2.2])
+plt.title('LIF (B=20ms)', fontsize=20)
+# plt.ylim([-3.5, 2.2])
 # plt.ylim([-4.5, 0.1])
-# plt.savefig('3I_common_B20.pdf')
+plt.ylim([-1.5,1.5])
+# plt.savefig('LIF_driven_B20.pdf')
 
 # %%
 inf_w = np.array([w12,w13,w21,w23,w32,w31])
@@ -479,7 +487,7 @@ plt.colorbar()
 # %% saving...
 # import pickle
 
-# pre_text = 'C4_3neuron_LIF_match'
+# pre_text = 'C4_3_driven_LIF_match'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
