@@ -21,9 +21,9 @@ matplotlib.rc('ytick', labelsize=20)
 
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
-dataset = 1  # 0-natural, 1-Brownian, 2-repeats
+dataset = 2  # 0-natural, 1-Brownian, 2-repeats
 nid = 1  # neuron example
-reps = 60 #len(mat_data['spike_times'][0][dataset][0])
+reps = 62 #len(mat_data['spike_times'][0][dataset][0])
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
 spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
 
@@ -41,15 +41,16 @@ spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 cell_ids = np.unique(spk_ids[0])
 nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three neurons
-# nids = np.array([16, 40, 31])
+nids = np.array([16, 40, 31])
 # nids = np.array([24, 13, 15])  # ,,10
 # nids = np.array([1,13,27])
 # nids = np.array([50, 31, 13]) ###
 ### array([21,  2, 27], dtype=uint8)
 nids = np.array([3, 34, 13])  #3,34,13
+# nids = np.array([3,40,31])
 
 # %% plot three neuron for Peter
-trial_id = 3
+trial_id = 3#46 
 plt.figure()
 for nn in range(3):
     # ni = nn*1 #
@@ -58,8 +59,10 @@ for nn in range(3):
     spki = spk_ids[trial_id].squeeze()
     pos = np.where(spki==ni)[0]
     plt.plot(spkt[pos], np.ones(len(pos))+nn,'k.')
-    plt.xlim([0,15000])
-
+    plt.xlim([0,20000])
+    # plt.xlim([8000,9000])
+    # plt.xlim([4000,5000])
+    # plt.xlim([3200,3700])
 # plt.savefig('retina_spk_exp.pdf')
 
 # %%
@@ -85,31 +88,31 @@ print(minisi_)
 print(max_lt)
 
 # %% loop across trial and time and neurons
-dt = 1 #0.1
+dt = 1 #.1
 lt = int(10000/dt) #int(max_lt/dt)
 firing_s = []  # across repeats!
 
-# for dd in range(3):   #### try all data!!
-#     spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
-#     spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
+for dd in range(1,3):   #### try all data!!
+    spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
+    spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
     
     
-for rr in range(reps):  # repeats
-    firing = []
-    firing.append((np.array([]), np.array([])))
-    
-    for tt in range(lt):  # time
-        spike_indices = np.array([])
+    for rr in range(reps):  # repeats
+        firing = []
+        firing.append((np.array([]), np.array([])))
         
-        for nn in range(N):  # neurons
-            spkt = spk_data[rr].squeeze()
-            spki = spk_ids[rr].squeeze()
-            pos = np.where(spki==nids[nn])[0]
-            spks = spkt[pos]
-            find_spk = np.where((spks > tt*dt) & (spks <= tt*dt+dt))[0]
-            if len(find_spk)!=0:
-                spike_indices = np.append(spike_indices, int(nn))
-        firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
+        for tt in range(lt):  # time
+            spike_indices = np.array([])
+            
+            for nn in range(N):  # neurons
+                spkt = spk_data[rr].squeeze()
+                spki = spk_ids[rr].squeeze()
+                pos = np.where(spki==nids[nn])[0]
+                spks = spkt[pos]
+                find_spk = np.where((spks > tt*dt) & (spks <= tt*dt+dt))[0]
+                if len(find_spk)!=0:
+                    spike_indices = np.append(spike_indices, int(nn))
+            firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
     
     firing_s.append(firing)
 
@@ -121,7 +124,7 @@ for rr in range(reps):  # repeats
 #         plt.plot(ii, temp[ii][1], 'k.')
         
 # %% some tests!!
-window = int(30/dt)  # .1ms window
+window = int(20/dt)  # .1ms window
 spk_state_all = []
 spk_time_all = []
 spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
@@ -280,7 +283,7 @@ categories = ['w12','w13','w21','w23','w32','w31']
 plt.figure()
 plt.bar(np.arange(6), inf_w)
 plt.xticks(np.arange(len(categories)), categories)
-plt.title('retina (B=20ms)', fontsize=20)
+plt.title('retina (B=100ms)', fontsize=20)
 # plt.savefig('retina_wij_20.pdf')
 
 # %% check biophysical correspondence

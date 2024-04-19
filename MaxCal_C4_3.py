@@ -25,11 +25,11 @@ matplotlib.rc('ytick', labelsize=20)
 N4 = 4  # for 4-neuron similation
 N = 3  # for subsampling MaxCal
 dt = 0.1  # time step in milliseconds
-timesteps = 150000  # total simulation steps
+timesteps = 300000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
-tau = 10.0*5.  # membrane time constant  #1.
+tau = 10.0*3.  # membrane time constant  #1.
 v_rest = -65.0  # resting membrane potential
 v_threshold = np.array([-50, -50, -50, -50])+0  # spike threshold for each neuron #-50
 v_threshold_plot = -50  # for simple visualization
@@ -50,10 +50,10 @@ synaptic_weights = np.array([[0, 1, -2, hs],  # Neuron 1 connections
                              [0, 0, 0, 0],])*20  #20  # Neuron 2 connections
 
 ### matching with heterogenous input!!!
-synaptic_weights = np.array([[0, 0, 0, -2.],
-                             [0, 0, 0, -2.],
-                             [0, 0, 0, 1],
-                             [0, 0, 0, 0]])  # no couoling 1-3, 4th neuron has ON or OFF input to them, with variable strength...
+# synaptic_weights = np.array([[0, 0, 0, -2.],
+#                              [0, 0, 0, -2.],
+#                              [0, 0, 0, 1.],
+#                              [0, 0, 0, 0]])  # no couoling 1-3, 4th neuron has ON or OFF input to them, with variable strength...
 
 # # random circuit
 # hidden_stength = 40  # 2 5 10 15 20  # 2 10 20 30 40
@@ -74,7 +74,7 @@ noise_amp = 2
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0*1  # synaptic time constant
-tau_synaptic = np.array([50, 50, 5, 5])  # trying different filteringf
+# tau_synaptic = np.array([50, 50, 5, 5])  # trying different filteringf
 
 # Initialize neuron membrane potentials and synaptic inputs
 v_neurons = np.zeros((N4, timesteps))
@@ -453,7 +453,7 @@ plt.xticks(np.arange(len(bar_positions_group1)), bar_positions_group1)
 plt.title('LIF (B=20ms)', fontsize=20)
 # plt.ylim([-3.5, 2.2])
 # plt.ylim([-4.5, 0.1])
-plt.ylim([-1.5,1.5])
+# plt.ylim([-1.5,1.5])
 # plt.savefig('LIF_driven_B20.pdf')
 
 # %%
@@ -487,7 +487,7 @@ plt.colorbar()
 # %% saving...
 # import pickle
 
-# pre_text = 'C4_3_driven_LIF_match'
+# pre_text = 'C4_3_driven_LIF_match3'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
@@ -525,3 +525,10 @@ plt.colorbar()
 # plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 # plt.ylabel('MaxCal inferred', fontsize=20)
 # plt.savefig('3_of_5_'+str(h_str)+'.pdf')
+
+# %% plot spikes
+lt_plt = int(10000/dt)
+plt.figure()
+for tt in range(lt_plt-1):
+    plt.plot(firing[tt][0], firing[tt][1],'k.')
+plt.xlim([0,10000])
