@@ -49,11 +49,11 @@ nids = np.array([16, 40, 31])
 # nids = np.array([50, 31, 13]) ###
 ### array([21,  2, 27], dtype=uint8)
 
-# nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
-nids = np.array([40,1,31])   # for SI plot
+nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
+# nids = np.array([40,1,31])   # for SI plot
 
 # %% plot three neuron for Peter
-trial_id = 46 
+trial_id = 4  
 plt.figure()
 for nn in range(3):
     # ni = nn*1 #
@@ -564,3 +564,6 @@ plt.figure()
 plt.hist(ctmc_isi, np.arange(0,1,.01)*300, density=True, alpha=0.5, label='CTMC')
 plt.hist(retina_isi, np.arange(0,1,.01)*300, density=True, alpha=0.5, label='retina')
 plt.legend(fontsize=20); plt.xlabel('ISI (ms)')
+
+# %% dwell time
+
