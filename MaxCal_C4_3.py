@@ -527,8 +527,11 @@ plt.colorbar()
 # plt.savefig('3_of_5_'+str(h_str)+'.pdf')
 
 # %% plot spikes
-lt_plt = int(10000/dt)
+lt_plt = int(1500/dt)
 plt.figure()
 for tt in range(lt_plt-1):
     plt.plot(firing[tt][0], firing[tt][1],'k.')
-plt.xlim([0,10000])
+plt.xlim([0,15000])
+plt.ylim([-0.1, 2.1])
+# plt.savefig('LIF_sSpk_train.pdf')
+# plt.xlim([10000,20000])

@@ -62,6 +62,7 @@ plt.imshow(stas[:,:,delay,nid])
 N = 3
 nids = np.array([5,30,40])  # 5,30,40
 nids = np.array([30,5,70])  # 30, 5, 70
+nids = np.array([49,120,32])
 
 plt.figure()
 for ii in range(N):
@@ -97,7 +98,7 @@ for tt in range(lt-1):  # time
     
 
 # %% some tests!!
-window = 120 #int(20/dt)  # .1ms window
+window = 50 #int(20/dt)  # .1ms window
 spk_state_all = []
 spk_time_all = []
 spk_states, spk_times = spk2statetime(firing, window, lt=lt)
@@ -162,5 +163,5 @@ plt.figure()
 plt.bar(np.arange(6), inf_w)
 plt.xticks(np.arange(len(categories)), categories)
 plt.title('retina (on-off-off)', fontsize=20)
-plt.ylim([-4.5, 1])
+# plt.ylim([-4.5, 1])
 # plt.savefig('retina_120ms2.pdf')
