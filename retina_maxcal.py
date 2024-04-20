@@ -7,7 +7,9 @@ Created on Sat Mar  9 18:48:50 2024
 
 from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint, \
                             MaxCal_D, objective_param, compute_min_isi, corr_param, sign_corr, P_frw_ctmc, C_P,\
-                            word_id
+                            word_id, sim_Q
+
+from statsmodels.tsa.stattools import acf
 
 import scipy.io
 import numpy as np
@@ -21,9 +23,9 @@ matplotlib.rc('ytick', labelsize=20)
 
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
-dataset = 2  # 0-natural, 1-Brownian, 2-repeats
-nid = 1  # neuron example
-reps = 62 #len(mat_data['spike_times'][0][dataset][0])
+dataset = 1  # 0-natural, 1-Brownian, 2-repeats
+nid = 40  # neuron example
+reps = 50 #len(mat_data['spike_times'][0][dataset][0])
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
 spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
 
@@ -46,11 +48,12 @@ nids = np.array([16, 40, 31])
 # nids = np.array([1,13,27])
 # nids = np.array([50, 31, 13]) ###
 ### array([21,  2, 27], dtype=uint8)
-nids = np.array([3, 34, 13])  #3,34,13
-# nids = np.array([3,40,31])
+
+# nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
+nids = np.array([40,1,31])   # for SI plot
 
 # %% plot three neuron for Peter
-trial_id = 3#46 
+trial_id = 46 
 plt.figure()
 for nn in range(3):
     # ni = nn*1 #
@@ -59,7 +62,7 @@ for nn in range(3):
     spki = spk_ids[trial_id].squeeze()
     pos = np.where(spki==ni)[0]
     plt.plot(spkt[pos], np.ones(len(pos))+nn,'k.')
-    plt.xlim([0,20000])
+    plt.xlim([0,15000])
     # plt.xlim([8000,9000])
     # plt.xlim([4000,5000])
     # plt.xlim([3200,3700])
@@ -114,7 +117,7 @@ for dd in range(1,3):   #### try all data!!
                     spike_indices = np.append(spike_indices, int(nn))
             firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
     
-    firing_s.append(firing)
+        firing_s.append(firing)
 
 # %% checking raster
 # plt.figure()
@@ -131,7 +134,7 @@ spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
 tau_all, C_all = compute_tauC(spk_states, spk_times, lt=lt)
 # (states, times, nc=nc, combinations=combinations, lt=None)
 
-for rr in range(len(firing_s)):
+for rr in range(1, len(firing_s)):
     spk_states, spk_times = spk2statetime(firing_s[rr], window, lt=lt)  # embedding states
     spk_state_all.append(spk_states)
     spk_time_all.append(spk_times)
@@ -202,7 +205,8 @@ rank_C = np.argsort(C_all.reshape(-1))[::-1]  # ranking transition
 new_lt = np.sum(tau_all)
 C_base,_ = param2M(np.ones(num_params))
 np.fill_diagonal(C_base, np.zeros(nc))
-C_all = C_all+C_base
+# tau_all = tau_all+1  # remove zeros, like C_base logic 
+# C_all = C_all+C_base
 tau_, C_ = tau_all/new_lt, C_all/new_lt*1 # time_norm  #lt/reps # correct normalization
 # tau_, C_ = tau/lt/1, C/lt/1 # correct normalization
 observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
@@ -243,13 +247,13 @@ result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraint
 param_temp = result.x
 
 # %%
-plt.figure()
-plt.plot(np.log(kls[:]),'-o')
-plt.xlabel('ranked dof', fontsize=20)
-plt.ylabel('KL', fontsize=20)
-plt.title('retina', fontsize=20)
-# plt.savefig('retina_KL.pdf')
-# plt.ylim([0,10])
+# plt.figure()
+# plt.plot(np.log(kls[:]),'-o')
+# plt.xlabel('ranked dof', fontsize=20)
+# plt.ylabel('KL', fontsize=20)
+# plt.title('retina', fontsize=20)
+# # plt.savefig('retina_KL.pdf')
+# # plt.ylim([0,10])
 
 # %% test cutoff
 # dof_cut = 32
@@ -401,15 +405,162 @@ plt.subplot(211)
 plt.bar(categories, inf_w, width=bar_width)
 plt.plot(categories, bar_positions_group2*0, 'k')
 plt.ylabel('inferred', fontsize=20)
+plt.ylim([-5,3.5])
+# plt.ylim([-4.5, 2])
 
 plt.subplot(212)
 plt.bar(bar_positions_group1, np.array([weff12,weff13,weff21,weff23,weff32,weff31])+0, width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('coarse grain', fontsize=20)
-# plt.savefig('retina_infer_CG.pdf')
+plt.ylim([-5,3.5])
+# plt.ylim([-4.5,2])
+# plt.savefig('retina_infer_CG_B150_SI.pdf')
 
 # %% ideas
 # window test
 # response function
 # effective model
 # try 3 out of 5 neurons...
+
+# %% new notes for 4/19
+# modify fig7, revisit large window for Appendix
+#######
+# generate spike train from fitted rates
+# measure ISI/IBI from the CTMC generated spike train (save MaxCal!)
+
+# %%
+###############################################################################
+# %% custom M matrix
+tau_new, C_new = (tau_all-1)/new_lt, (C_all-C_base*1)/new_lt*1
+M_data = (C_new/tau_new[:,None])
+M_data[np.isnan(M_data)] = 0
+np.fill_diagonal(M_data, -np.sum(M_data,1))
+
+# %% testing CTMC generative process!!
+M_inf = (C_/tau_[:,None])
+np.fill_diagonal(M_inf, np.zeros(nc))
+Q = M_inf*1 
+np.fill_diagonal(Q, -np.sum(Q,1))
+
+# Q = M_data*1 
+ctmc_s, ctmc_t = sim_Q(Q, 15000, 1)
+
+# % state back to spikes
+# ctmc_spkt, ctmc_spki = [],[]
+plt.figure()
+for tt in range(len(ctmc_t)):
+    state = ctmc_s[tt]
+    time = ctmc_t[tt]
+    word = np.array(combinations[state])
+    for nn in range(N):
+        if word[nn]==1:
+            plt.plot(time, nn, 'k.')
+            # ctmc_spkt.append(tt)
+            # ctmc_spki.append(nn)
+
+# %% compute ISI, for RETINA
+retina_isi = []
+for dd in range(1,3):   #### try all data!!
+    spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
+    spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
+    for nn in range(N):
+        for rr in range(reps):
+            spkt = spk_data[rr].squeeze()
+            spki = spk_ids[rr].squeeze()
+            pos = np.where(spki==nids[nn])[0]
+            spks = spkt[pos]
+            if len(spks)>2:
+                spks = spks[np.where(spks<lt)[0]]
+                isis = np.diff(spks)
+                retina_isi.append(isis)
+
+retina_isi = np.concatenate(retina_isi, axis=0)
+plt.figure()
+plt.hist(retina_isi, np.arange(0,1,.02)*100, density=True, alpha=0.7)
+
+# %% compute burst, for RETINA
+Bt_retina = []
+retina_burst = np.ones(4)
+for dd in range(len(spk_state_all)):
+    states = spk_state_all[dd]
+    times = spk_time_all[dd]
+    if len(states)>0:
+        btt = []
+        for tt in range(1, len(states)):
+            word = np.array(combinations[states[tt]])
+            idp = int(sum(word))
+            retina_burst[idp] += 1
+            btt.append(np.ones(times[tt]-times[tt-1])*idp)  # bust time series
+    Bt_retina.append(np.concatenate((btt),axis=0))
+    
+# %% for CTMC
+reps_ctmc = 3000        
+ctmc_data, ctmc_ids = [], []
+ctmc_burst = np.ones(4)
+Bt_ctmc = []
+for rr in range(reps_ctmc):
+    ctmc_s, ctmc_t = sim_Q(Q, 15000, 1)
+    ctmc_spkt, ctmc_spki = [],[]
+    btt = []
+    for tt in range(1, len(ctmc_t)):
+        state = ctmc_s[tt]
+        time = ctmc_t[tt]
+        word = np.array(combinations[state])
+        idp = int(sum(word))
+        ctmc_burst[idp] += 1
+        btt.append(np.ones(int(ctmc_t[tt]-ctmc_t[tt-1]))*idp)
+        for nn in range(N):
+            if word[nn]==1:
+                ctmc_spkt.append(time)
+                ctmc_spki.append(nn)
+    ctmc_data.append(np.array(ctmc_spkt))
+    ctmc_ids.append(np.array(ctmc_spki))
+    
+    Bt_ctmc.append(np.concatenate((btt),axis=0))
+# ctmc_spkt = np.array(ctmc_spkt)
+# ctmc_spki = np.array(ctmc_spki)
+
+# %% compare burst
+plt.figure()
+plt.bar([0,1,2,3], retina_burst/np.sum(retina_burst),  alpha=0.5, label='retina')
+plt.bar([0,1,2,3], ctmc_burst/np.sum(ctmc_burst),  alpha=0.5, label='CTMC')
+plt.legend(fontsize=20); plt.xlabel('burst size', fontsize=20); plt.ylabel('P(burst)', fontsize=20)
+plt.yscale('log')
+
+# %% compare burst-autocorr
+def compute_average_acf(time_series_list, max_lag):
+    total_acf = np.zeros(max_lag + 1)
+    for time_series in time_series_list:
+        if len(time_series)> max_lag:
+            acf_values = acf(time_series, nlags=max_lag)
+            total_acf += acf_values
+    average_acf = total_acf / len(time_series_list)
+    return average_acf
+
+max_lag = 500
+ctmc_acf = compute_average_acf(Bt_ctmc, max_lag)
+retina_acf = compute_average_acf(Bt_retina, max_lag)
+# Plot average autocorrelation function
+lag = np.arange(max_lag + 1)
+plt.figure()
+plt.plot(lag, ctmc_acf, label='CTMC')
+plt.plot(lag, retina_acf, label='retina')
+plt.xlabel('Lag'); plt.ylabel('acf'); plt.legend(fontsize=20)
+
+# %% compare ISI
+ctmc_isi = []
+for rr in range(reps_ctmc):
+    spkt = ctmc_data[rr]
+    spki = ctmc_ids[rr]
+    for nn in range(N):
+        pos = np.where(spki==nn)[0]
+        spks = spkt[pos]
+        if len(spks)>2:
+            isis = np.diff(spks)
+            ctmc_isi.append(isis)
+
+ctmc_isi = np.concatenate(ctmc_isi, axis=0)
+plt.figure()
+plt.hist(ctmc_isi, np.arange(0,1,.01)*300, density=True, alpha=0.5, label='CTMC')
+plt.hist(retina_isi, np.arange(0,1,.01)*300, density=True, alpha=0.5, label='retina')
+plt.legend(fontsize=20); plt.xlabel('ISI (ms)')
