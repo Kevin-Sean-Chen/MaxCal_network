@@ -350,6 +350,9 @@ def invf(x):
     # output = np.log(-1+np.exp(-x))
     return output
 
+def cos_ang(v1,v2):
+    return np.dot(v1,v2) / (np.linalg.norm(v1)* np.linalg.norm(v2))
+
 # %% maxcal inference
 dofs = num_params*1
 dofs_all = nc**2 + nc
@@ -472,7 +475,7 @@ plt.colorbar()
 # %% loading past data
 # import pickle
 
-# h_str = 2  #2,10,20,30,40
+# h_str = 40  #2,10,20,30,40
 # # Load variables from file
 # with open('C5_3neuron_'+str(h_str)+'.pkl', 'rb') as f:
 #     loaded_data = pickle.load(f)
@@ -481,6 +484,8 @@ plt.colorbar()
 # print(loaded_data['corr_coeff'])
 
 # print(corr_param(loaded_data['true_w'], loaded_data['inf_w'], 'binary'))
+
+# print(cos_ang(loaded_data['true_w'], loaded_data['inf_w']))
 
 # inf_w_ = loaded_data['inf_w']
 # plt.figure()
@@ -502,11 +507,15 @@ hidden_str = np.array([40,30,20,10,2])/20
 plt.figure()
 # plt.plot(hidden_str, np.array([0.74,0.86,0.91,0.95,0.98]),'-o')
 # plt.plot(hidden_str, np.array([0.70,0.73,0.82,0.91,0.98]),'-o')
-plt.plot(hidden_str, np.array([.6775467031709071, .8706646317156895, .9214852480402794,\
-                               .9843874043062822, .9908173400126193]),'-o', label='corr')
-plt.plot(hidden_str, np.array([-0.3333333333333334, .0, 0.6666666666666669,\
-                               1., 1.]),'-o', label='signed corr')
+
+# plt.plot(hidden_str, np.array([.6775467031709071, .8706646317156895, .9214852480402794,\
+#                                .9843874043062822, .9908173400126193]),'-o', label='corr')
+# plt.plot(hidden_str, np.array([-0.3333333333333334, .0, 0.6666666666666669,\
+#                                1., 1.]),'-o', label='signed corr')
+    
+plt.plot(hidden_str, np.flip(np.array([0.9505114946961636, 0.9627220474421325, 0.8289460323019745,\
+                               0.5134746570658676, 0.14765253151511745]),0),'-o', label='cos-ang')
     
 plt.xlabel('hidden/structure strength', fontsize=20)
 plt.ylabel('correlation coefficient', fontsize=20); plt.legend(fontsize=20)
-# plt.savefig('3_of_5_error2.pdf')
+# plt.savefig('3_of_5_error_cos.pdf')
