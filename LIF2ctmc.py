@@ -59,7 +59,7 @@ synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
 
 S = synaptic_weights*1
 np.fill_diagonal(S, np.zeros(3))
-noise_amp = 1.5  # 2.0 or 2.5 (1.5, 3.0)
+noise_amp = 1.  # 2.0 or 2.5 (1.5, 3.0)
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant

@@ -24,8 +24,8 @@ matplotlib.rc('ytick', labelsize=20)
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
 dataset = 1  # 0-natural, 1-Brownian, 2-repeats
-nid = 40  # neuron example
-reps = 50 #len(mat_data['spike_times'][0][dataset][0])
+nid = 3  # neuron example
+reps = 62 #len(mat_data['spike_times'][0][dataset][0])  #62, 50
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
 spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
 
@@ -53,7 +53,7 @@ nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
 # nids = np.array([40,1,31])   # for SI plot
 
 # %% plot three neuron for Peter
-trial_id = 4  
+trial_id = 0  
 plt.figure()
 for nn in range(3):
     # ni = nn*1 #
@@ -95,7 +95,7 @@ dt = 1 #.1
 lt = int(10000/dt) #int(max_lt/dt)
 firing_s = []  # across repeats!
 
-for dd in range(1,3):   #### try all data!!
+for dd in range(2,3):   #### try all data!!
     spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
     spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
     
@@ -405,16 +405,16 @@ plt.subplot(211)
 plt.bar(categories, inf_w, width=bar_width)
 plt.plot(categories, bar_positions_group2*0, 'k')
 plt.ylabel('inferred', fontsize=20)
-plt.ylim([-5,3.5])
+plt.ylim([-5.5,2.5])
 # plt.ylim([-4.5, 2])
 
 plt.subplot(212)
 plt.bar(bar_positions_group1, np.array([weff12,weff13,weff21,weff23,weff32,weff31])+0, width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('coarse grain', fontsize=20)
-plt.ylim([-5,3.5])
+plt.ylim([-5.5,2.5])
 # plt.ylim([-4.5,2])
-# plt.savefig('retina_infer_CG_B150_SI.pdf')
+# plt.savefig('retina_infer_CG_B20_full.pdf')
 
 # %% ideas
 # window test
@@ -431,7 +431,7 @@ plt.ylim([-5,3.5])
 # %%
 ###############################################################################
 # %% custom M matrix
-tau_new, C_new = (tau_all-1)/new_lt, (C_all-C_base*1)/new_lt*1
+tau_new, C_new = (tau_all-0)/new_lt, (C_all-C_base*0)/new_lt*1
 M_data = (C_new/tau_new[:,None])
 M_data[np.isnan(M_data)] = 0
 np.fill_diagonal(M_data, -np.sum(M_data,1))
@@ -457,6 +457,7 @@ for tt in range(len(ctmc_t)):
             plt.plot(time, nn, 'k.')
             # ctmc_spkt.append(tt)
             # ctmc_spki.append(nn)
+# plt.savefig('retina_CTMC_spk.pdf')
 
 # %% compute ISI, for RETINA
 retina_isi = []
@@ -494,7 +495,7 @@ for dd in range(len(spk_state_all)):
     Bt_retina.append(np.concatenate((btt),axis=0))
     
 # %% for CTMC
-reps_ctmc = 3000        
+reps_ctmc = 500        
 ctmc_data, ctmc_ids = [], []
 ctmc_burst = np.ones(4)
 Bt_ctmc = []
@@ -561,9 +562,20 @@ for rr in range(reps_ctmc):
 
 ctmc_isi = np.concatenate(ctmc_isi, axis=0)
 plt.figure()
-plt.hist(ctmc_isi, np.arange(0,1,.01)*300, density=True, alpha=0.5, label='CTMC')
-plt.hist(retina_isi, np.arange(0,1,.01)*300, density=True, alpha=0.5, label='retina')
+plt.hist(ctmc_isi, np.arange(0,1,.05)*500, density=True, alpha=0.5, label='CTMC')
+plt.hist(retina_isi, np.arange(0,1,.05)*500, density=True, alpha=0.5, label='retina')
 plt.legend(fontsize=20); plt.xlabel('ISI (ms)')
+plt.yscale('log')
+
+# %%
+plt.figure() 
+aa_ctmc,bb = np.histogram(ctmc_isi, np.arange(0,1,.02)*500, density=True)
+aa_retina,bb = np.histogram(retina_isi, np.arange(0,1,.02)*500, density=True)
+bb = (bb[:-1]+bb[1:])/2
+plt.plot(bb, aa_ctmc, label='CTMC')
+plt.plot(bb,aa_retina, label='retina')
+plt.yscale('log'); plt.legend(fontsize=20); plt.xlabel('ISI (ms)', fontsize=20)
+# plt.savefig('retina_ctmc_ISI.pdf')
 
 # %% dwell time
 
