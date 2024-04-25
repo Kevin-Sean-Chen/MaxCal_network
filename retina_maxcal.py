@@ -10,7 +10,7 @@ from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint
                             word_id, sim_Q
 
 from statsmodels.tsa.stattools import acf
-
+import random
 import scipy.io
 import numpy as np
 from matplotlib import pyplot as plt
@@ -43,7 +43,7 @@ spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 cell_ids = np.unique(spk_ids[0])
 nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three neurons
-nids = np.array([16, 40, 31])
+# nids = np.array([16, 40, 31])
 # nids = np.array([24, 13, 15])  # ,,10
 # nids = np.array([1,13,27])
 # nids = np.array([50, 31, 13]) ###
@@ -577,5 +577,88 @@ plt.plot(bb,aa_retina, label='retina')
 plt.yscale('log'); plt.legend(fontsize=20); plt.xlabel('ISI (ms)', fontsize=20)
 # plt.savefig('retina_ctmc_ISI.pdf')
 
-# %% dwell time
+# %% Max Ent!!!
+###############################################################################
+# %%
+def MaxEnt_states(firing, window, lt=lt, N=N, combinations=combinations):
+    """
+    given the firing (time and neuron that fired) data, we choose time window to slide through,
+    then convert to network states and the timing of transition
+    """
+    nstates = int(lt/window)-1
+    me_states = np.zeros(nstates)
+    for tt in range(nstates):
+        this_window = firing[tt*window:tt*window+window]
+        word = np.zeros(N)  # template for the binary word
+        for ti in range(window): # in time
+            if len(this_window[ti][1])>0:
+                for nspk in range(len(this_window[ti][1])):  ## NOT CTMC anymore
+                    this_neuron = this_window[ti][1][nspk]  # the neuron that fired first
+                    word[int(this_neuron)] = 1
+        state_id = combinations.index(tuple(word))
+        me_states[tt] = state_id
+    return me_states
 
+def tau4maxent(states, nc=nc, combinations=combinations, lt=None):
+    """
+    given the emperically measured states, measure occupency tau and the transitions C
+    """
+    tau = np.zeros(nc)
+    for i in range(len(states)):
+        this_state = int(states[i])
+        tau[this_state] += 1
+    return tau
+
+def sim_maxent(tau, lt=lt, N=N, combinations=combinations):
+    me_spk, me_t = [], []
+    state_freq = tau/np.sum(tau)
+    state_vec = np.arange(len(tau))
+    for tt in range(lt):
+        state_samp = random.choices(state_vec, state_freq)[0]  # equilibrium sampling!
+        word = np.array(combinations[state_samp])
+        for nn in range(N):
+            if word[nn]==1:
+                me_t.append(tt)
+                me_spk.append(nn)
+    return me_spk, me_t
+
+# %% compute ISI
+### inference with MaxEnt
+adapt_window = window*1  # ms
+states_me = MaxEnt_states(firing, adapt_window)
+tau_me = tau4maxent(states_me)
+
+### sample from MaxEnt
+reps_me = 100        
+me_data, me_ids = [], []
+for rr in range(reps_me):
+    me_spk, me_t = sim_maxent(tau_me)
+    me_data.append(np.array(me_t))
+    me_ids.append(np.array(me_spk))
+
+### measure MaxEnt isi
+me_isi = []
+for rr in range(len(me_data)):
+    spkt = me_data[rr]
+    spki = me_ids[rr]
+    for nn in range(N): #(N):
+        pos = np.where(spki==nn)[0]
+        spks = spkt[pos]
+        if len(spks)>2:
+            isis = np.diff(spks) * (adapt_window*dt)
+            me_isi.append(isis)
+me_isi = np.concatenate(me_isi, axis=0)
+
+# %%
+isi_max = 520  # 1500
+plt.figure() 
+aa_ctmc,bb = np.histogram(ctmc_isi, np.arange(0,isi_max, adapt_window), density=True)
+aa_retina,bb = np.histogram(retina_isi, np.arange(0,isi_max, adapt_window), density=True)
+aa_me,bb = np.histogram(me_isi, np.arange(0,isi_max, adapt_window), density=True)
+bb = (bb[:-1]+bb[1:])/2
+leave = np.arange(1,len(aa_me)-1,1)
+plt.plot(bb[:-1], aa_ctmc[:-1], label='CTMC')
+plt.plot(bb[:-1], aa_retina[:-1], label='retina')
+plt.plot(bb[leave],aa_me[leave], label='Max Ent')
+plt.yscale('log'); plt.legend(fontsize=20); plt.xlabel('ISI (ms)', fontsize=20)
+# plt.savefig('retina_ctmc_ISI2.pdf')
