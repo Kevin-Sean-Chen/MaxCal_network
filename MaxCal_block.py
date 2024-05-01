@@ -7,7 +7,7 @@ Created on Thu Apr  4 13:13:38 2024
 
 from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint, \
         objective_param, compute_min_isi, sim_Q, MaxCal_D, edge_flux_inf, EP, corr_param,\
-        constraint_blocks_3N, LIF_firing
+        constraint_blocks_3N, LIF_firing, cos_ang
 
 import maxcal_functions
 
@@ -121,8 +121,8 @@ for ii in range(target_dof):  #3
     ep_inf[ii] = EP(kij_inf)
     ep_fin[ii] = EP(kij_fin)
     inf_weight = param2weight(param_inf)
-    r2_inf[ii] = corr_param(true_w, inf_weight, '0')
-    r2_fin[ii] = corr_param(true_w, inf_weight, '0')
+    r2_inf[ii] = cos_ang(true_w, inf_weight)  #corr_param(true_w, inf_weight, '0')
+    # r2_fin[ii] = cos_ang(true_w, fin_weight) #corr_param(true_w, fin_weight, '0')
     
     print(ii)    
 
@@ -151,27 +151,28 @@ plt.xlabel('tau analytic', fontsize=20); plt.ylabel('tau finite', fontsize=20)
 # %% line plots
 x_lab = ['tau','f','fw','fw_ijk','r','ru','ru_ijk']
 
-plt.figure()
-plt.subplot(131)
+plt.figure(figsize=(6, 6))
+plt.subplot(311)
 plt.plot( kls_inf, '-o', label='analytic')
 # plt.plot(kls_fin, '-o', label='finite-data')
 plt.ylabel('KL', fontsize=20); #plt.legend(fontsize=20); 
 plt.xticks(np.arange(len(x_lab)), x_lab)
 
 # plt.figure()
-plt.subplot(132)
+plt.subplot(312)
 plt.plot(r2_inf, '-o', label='analytic')
 # plt.plot(r2_fin, '-o', label='finite-data'); #plt.ylim([0., 1])
 plt.ylabel('corr', fontsize=20); #plt.legend(fontsize=20); 
 plt.xticks(np.arange(len(x_lab)), x_lab)
 
 # plt.figure()
-plt.subplot(133)
+plt.subplot(313)
 plt.plot(ep_inf, '-o', label='analytic')
 # plt.plot(ep_fin, '-o', label='finite-data')
 plt.legend(fontsize=15); 
 plt.ylabel('EP', fontsize=20)
 plt.xticks(np.arange(len(x_lab)), x_lab)
+# plt.savefig('learning_block_ctmc.pdf')
 
 # %% saving
 # import pickle
@@ -217,13 +218,14 @@ plt.xticks(np.arange(len(x_lab)), x_lab)
 # %%
 ###############################################################################
 # %%
-firing = LIF_firing(100000)
+firing = LIF_firing(600000)
 lif_weights = np.array([1,1,1,1,-2,-2])*20   # check that this is same as in the function
-wind = 150  
+wind = 150 #150  
 N = 3  # number of neurons
 num_params = int((N*2**N)) 
 nc = 2**N
 
+# %%
 lt = len(firing)
 spk_states, spk_times = spk2statetime(firing, wind)  # embedding states
 tau_count, C_count = compute_tauC(spk_states, spk_times, lt=lt)  # emperical measurements
@@ -277,8 +279,9 @@ for ii in range(target_dof):
     w12,w13,w21 = invf(M_inf[4,6]/f2), invf(M_inf[4,5]/f3), invf(M_inf[2,6]/f1)
     w23,w32,w31 = invf(M_inf[2,3]/f3), invf(M_inf[1,3]/f2), invf(M_inf[1,5]/f1)
     infer_wij = np.array([w12,w13,w21, w23,w32,w31])
-    r2_spk[ii] = corr_param(lif_weights, infer_wij, '0')  # bin correlation of weights
-    sign_spk[ii] = corr_param(lif_weights, infer_wij, 'binary')
+    r2_spk[ii] = cos_ang(lif_weights, infer_wij)  #
+    # r2_spk[ii] = corr_param(lif_weights, infer_wij, '0')# bin correlation of weights
+    sign_spk[ii] = corr_param(lif_weights, infer_wij, '0') #'binary'
     
     print(ii)  
     print('truncate eq-cst: ', eq_constraint(param_spk, observations_spk, Cp_condition))
@@ -294,7 +297,7 @@ corr_param(lif_weights, hijack_wij, '0')
 # %%
 x_lab = ['tau','f','fw','fw_ijk','r','ru','ru_ijk']
 x_tik = np.arange(len(x_lab))
-plt.figure()
+plt.figure(figsize=(6, 6))
 plt.subplot(311)
 plt.plot(x_tik, kls_spk ,'-o')
 plt.ylabel('KL', fontsize=20); #plt.ylim([4,5.])#plt.legend(fontsize=20); 
@@ -302,8 +305,8 @@ plt.title('LIF', fontsize=20)
 
 # plt.figure()
 plt.subplot(312)
-plt.plot(x_tik, r2_spk, '-o', label='corr')
-plt.plot(x_tik, sign_spk,'-o', label='signed corr')
+plt.plot(x_tik, r2_spk, '-o', label='cos')
+# plt.plot(x_tik, sign_spk,'-o', label='corr')
 plt.ylabel('corr', fontsize=20); plt.legend(fontsize=10); 
 
 # plt.figure()
@@ -311,11 +314,12 @@ plt.subplot(313)
 plt.plot(x_tik, ep_spk,'-o')
 plt.ylabel('EP', fontsize=20)
 plt.xticks(np.arange(len(x_lab)), x_lab)
+# plt.savefig('learning_block_LIF.pdf')
 
 # %% saving
 # import pickle
 
-# pre_text = 'learning_block_LIF'
+# pre_text = 'learning_block_LIF2'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
