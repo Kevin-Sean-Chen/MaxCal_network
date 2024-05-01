@@ -160,7 +160,7 @@ plt.xticks(np.arange(len(x_lab)), x_lab)
 
 # plt.figure()
 plt.subplot(312)
-plt.plot(r2_inf, '-o', label='analytic')
+plt.plot(r2_inf, '-o', label='analytic'); plt.ylim([0., 1.1])
 # plt.plot(r2_fin, '-o', label='finite-data'); #plt.ylim([0., 1])
 plt.ylabel('corr', fontsize=20); #plt.legend(fontsize=20); 
 plt.xticks(np.arange(len(x_lab)), x_lab)
@@ -220,7 +220,7 @@ plt.xticks(np.arange(len(x_lab)), x_lab)
 # %%
 firing = LIF_firing(600000)
 lif_weights = np.array([1,1,1,1,-2,-2])*20   # check that this is same as in the function
-wind = 150 #150  
+wind = 100 #150  
 N = 3  # number of neurons
 num_params = int((N*2**N)) 
 nc = 2**N
@@ -305,9 +305,9 @@ plt.title('LIF', fontsize=20)
 
 # plt.figure()
 plt.subplot(312)
-plt.plot(x_tik, r2_spk, '-o', label='cos')
+plt.plot(x_tik, r2_spk, '-o', label='cos'); plt.ylim([0, 1.1])
 # plt.plot(x_tik, sign_spk,'-o', label='corr')
-plt.ylabel('corr', fontsize=20); plt.legend(fontsize=10); 
+plt.ylabel('corr', fontsize=20); #plt.legend(fontsize=10); 
 
 # plt.figure()
 plt.subplot(313)
