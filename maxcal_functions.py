@@ -265,6 +265,9 @@ def M2weights(param):
     weights = np.array([w12,w13,w21,w23,w32,w31])
     return weights
 
+def cos_ang(v1,v2):
+    return np.dot(v1,v2) / (np.linalg.norm(v1)* np.linalg.norm(v2))
+
 # %% Maxcal functions (should write better code and import once confirmed...)
 def MaxCal_D(kij, kij0, param):
     """
