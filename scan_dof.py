@@ -139,31 +139,62 @@ for rr in range(rep_finite):
 # ep_inf = loaded_data['ep_inf']
 # ep_fin = loaded_data['ep_fin']
 
+# %% plotting
+###############################################################################
 # %%
 plt.figure()
-plt.plot(kls_fin,'-o', alpha=0.2, color='k')
-plt.plot(kls_inf,'-o', label='analytic')
+# plt.plot(kls_fin,'-o', alpha=0.2, color='k')
+maxs = np.max(kls_fin,1)
+mins = np.min(kls_fin,1)
+mean = np.mean(kls_fin,1)
+# plt.plot(mean,'k--', label='finite data')
+plt.fill_between(np.arange(len(kls_inf)), mins, maxs, color='gray', alpha=0.3)
+plt.plot(kls_fin,'.', alpha=0.1, color='k')
+plt.plot(kls_inf,'-o', label='infinite data')
 plt.legend(fontsize=20); plt.ylabel('KL', fontsize=20); plt.ylim([3.9,6])
-# plt.savefig('KL_ana.pdf')
+# plt.savefig('KL_std.pdf')
 
+# %%
 plt.figure()
-plt.plot(r2_fin,'-o',  alpha=0.2, color='k')
+# plt.plot(r2_fin,'-o',  alpha=0.2, color='k')
+maxs = np.max(r2_fin,1)
+mins = np.min(r2_fin,1)
+mean = np.mean(r2_fin,1)
+# plt.plot(mean,'k--')
+plt.fill_between(np.arange(len(kls_inf)), mins, maxs, color='gray', alpha=0.3, label='Standard Deviation')
+plt.plot(r2_fin,'.',  alpha=0.1, color='k')
 plt.plot(r2_inf,'-o', label='analytic')
-plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
-# plt.savefig('R2_ana.pdf')
+# plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
+# plt.savefig('R2_std.pdf')
 
+# %%
 plt.figure()
-plt.plot(sign_fin,'-o',  alpha=0.2, color='k')
+# plt.plot(sign_fin,'-o',  alpha=0.2, color='k')
+plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
+maxs = np.nanmax(sign_fin,1)
+mins = np.nanmin(sign_fin,1)
+mean = np.nanmean(sign_fin,1)
+# plt.plot(mean,'k--')
+plt.fill_between(np.arange(len(kls_inf)), mins, maxs, color='gray', alpha=0.3, label='Standard Deviation')
+plt.plot(sign_fin,'.',  alpha=0.1, color='k')
 plt.plot(sign_inf,'-o', label='analytic')
-plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
-# plt.savefig('R2_sign_ana.pdf')
+# plt.savefig('R2_sign_std.pdf')
 
+# %%
 plt.figure()
-plt.plot(ep_fin,'-o',  alpha=0.2, color='k')
+# plt.plot(ep_fin,'-o',  alpha=0.2, color='k')
+# plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
+maxs = np.max(ep_fin,1)
+mins = np.min(ep_fin,1)
+mean = np.nanmean(ep_fin,1)
+# plt.plot(mean,'k--')
+plt.fill_between(np.arange(len(kls_inf)), mins, maxs, color='gray', alpha=0.3, label='Standard Deviation')
+plt.plot(ep_fin,'.',  alpha=0.1, color='k')
 plt.plot(ep_inf,'-o', label='analytic')
-plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
-# plt.savefig('EP_ana.pdf')
+plt.yscale('log')
+# plt.savefig('EP_log_std.pdf')
 
+# %%
 plt.figure()
 plt.semilogy(ep_fin,'-o',  alpha=0.2, color='k')
 plt.semilogy(ep_inf,'-o', label='analytic')
