@@ -19,7 +19,7 @@ matplotlib.rc('ytick', labelsize=20)
 # Simulation parameters
 N = 3
 dt = 0.1  # time step in milliseconds
-timesteps = 100000  # total simulation steps
+timesteps = 150000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
@@ -31,9 +31,13 @@ v_reset = -65.0  # reset potential after a spike
 
 # Synaptic weight matrix
 # E-I balanced circuit
-synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
-                             [1, 0, -2],  # Neuron 1 connections
-                             [1, 1,  0]])*20  #20  # Neuron 2 connections
+synaptic_weights = np.array([[0, 1.7, -2.],  # Neuron 0 connections
+                             [.3, 0, -2],  # Neuron 1 connections
+                             [.3, 1.7,  0]])*20  #20  # Neuron 2 connections
+# old EI
+# synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
+#                              [1, 0, -2],  # Neuron 1 connections
+#                              [1, 1,  0]])*20  #20  # Neuron 2 connections
 
 # # for retina! RGC 3,34,13
 # synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
@@ -50,7 +54,7 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
 S = synaptic_weights*1
 np.fill_diagonal(S, np.zeros(3))
 # synaptic_weights = np.random.randn(3,3)*.8
-noise_amp = 1.5
+noise_amp = 1.5#1.5
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant
@@ -158,7 +162,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=180)
+spk_states, spk_times = spk2statetime(firing, window=150) #180
 plt.figure()
 plt.plot(spk_states)
 
@@ -531,15 +535,15 @@ plt.figure()
 ws = np.array([0, w21, w31, w21+w31])
 phis = np.array([f1, M_inf[2,6], M_inf[1,5], M_inf[3,7]])
 sort_id = np.argsort(ws)
-plt.semilogy(ws[sort_id], phis[sort_id],'-o', label='neuron1')
+plt.plot(ws[sort_id], phis[sort_id],'-o', label='neuron1')
 ws = np.array([0, w12, w32, w12+w32])
 phis = np.array([f2, M_inf[4,6], M_inf[1,3], M_inf[5,7]])
 sort_id = np.argsort(ws)
-plt.semilogy(ws[sort_id], phis[sort_id],'-o', label='neuron2')
+plt.plot(ws[sort_id], phis[sort_id],'-o', label='neuron2')
 ws = np.array([0, w13, w23, w13+w23])
 phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
 sort_id = np.argsort(ws)
-plt.semilogy(ws[sort_id], phis[sort_id],'-o', label='neuron3')
+plt.plot(ws[sort_id], phis[sort_id],'-o', label='neuron3')
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
 # plt.savefig('x_philog.pdf')
 
@@ -608,7 +612,7 @@ plt.ylabel('effective coupling', fontsize=10)
 # %% saving...
 # import pickle
 
-# pre_text = 'LIF_3neuron'
+# pre_text = 'LIF_3neuron_new5'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
@@ -622,12 +626,12 @@ plt.ylabel('effective coupling', fontsize=10)
 # print("Variables saved successfully.")
 
 # %% load data
-import pickle
+# import pickle
 
-with open('LIF_3neuron.pkl', 'rb') as f:
-    loaded_data = pickle.load(f)
+# with open('LIF_3neuron.pkl', 'rb') as f:
+#     loaded_data = pickle.load(f)
 
-print("Variables loaded successfully:")
+# print("Variables loaded successfully:")
 
 # %% notes
 # can try numerical nonlinearity of LIF with synaptic filter

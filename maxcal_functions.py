@@ -103,7 +103,8 @@ def spk2statetime(firing, window, lt=lt, N=N, combinations=combinations):
         for ti in range(window): # in time
             if len(this_window[ti][1])>0:
                 this_neuron = this_window[ti][1][0]  # the neuron that fired first
-                word[int(this_neuron)] = 1
+                if this_neuron<N:  # for only oberved!
+                    word[int(this_neuron)] = 1
         state_id = combinations.index(tuple(word))
         states_spk[tt] = state_id
     
