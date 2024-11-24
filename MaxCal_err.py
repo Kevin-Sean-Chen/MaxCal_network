@@ -29,15 +29,15 @@ lt = timesteps*1
 window = 200
 
 # vanilla choice...
-synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
-                              [1, 0, -2],  # Neuron 1 connections
-                              [1, 1, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
+#                               [1, 0, -2],  # Neuron 1 connections
+#                               [1, 1, 0]])*20  #20  # Neuron 2 connections
 
 # Synaptic weight matrix
 # E-I balanced circuit
-# synaptic_weights = np.array([[0, 1.7, -2.],  # Neuron 0 connections
-#                              [.3, 0, -2],  # Neuron 1 connections
-#                              [.3, 1.7,  0]])*20  #20  # Neuron 2 connections
+synaptic_weights = np.array([[0, 1.7, -2.],  # Neuron 0 connections
+                              [.3, 0, -2],  # Neuron 1 connections
+                              [.3, 1.7,  0]])*20  #20  # Neuron 2 connections
 # cyclic circuit
 # synaptic_weights = np.array([[0, 0, 1],  # Neuron 0 connections
 #                               [1, 0, 0],  # Neuron 1 connections
@@ -76,7 +76,7 @@ def LIF_firing():
     # Synaptic weight matrix
     S = synaptic_weights*1
     np.fill_diagonal(S, np.zeros(3))
-    noise_amp = 2 #1.7
+    noise_amp = 1.7  #2
 
     # Synaptic filtering parameters
     tau_synaptic = 5.0  # synaptic time constant
@@ -214,12 +214,13 @@ inf_ws = np.zeros((reps, 6))  # ws
 eff_ws = inf_ws*1  # effective coupling
 inf_us = inf_ws*1  # us
 cgs = inf_ws*1  # couasre-graining
+r_curves = np.zeros((reps, 2, 3, 4))  # repeats x (I,phi) x neurons x points
 
 for rr in range(reps):
     print(rr)
     ### simulation
-    # firing = LIF_firing()
-    firing = LIF_C5_3()
+    firing = LIF_firing()
+    # firing = LIF_C5_3()
     ### counting
     spk_states, spk_times = spk2statetime(firing, window, lt=lt, N=N)
     tau,C = compute_tauC(spk_states, spk_times, lt=lt)
@@ -251,6 +252,23 @@ for rr in range(reps):
     weff23,weff32,weff31 = coarse_grain_tauC((2,3,1),tau,C), coarse_grain_tauC((3,2,1),tau,C), coarse_grain_tauC((3,1,2),tau,C)
     cgs[rr,:] = np.array([weff12,weff13,weff21,weff23,weff32,weff31])
     
+    ### response curves
+    ws = np.array([0, w21, w31, w21+w31])
+    phis = np.array([f1, M_inf[2,6], M_inf[1,5], M_inf[3,7]])
+    sort_id = np.argsort(ws)
+    r_curves[rr,0,0,:] = ws[sort_id]
+    r_curves[rr,1,0,:] = phis[sort_id]
+    ws = np.array([0, w12, w32, w12+w32])
+    phis = np.array([f2, M_inf[4,6], M_inf[1,3], M_inf[5,7]])
+    sort_id = np.argsort(ws)
+    r_curves[rr,0,1,:] = ws[sort_id]
+    r_curves[rr,1,1,:] = phis[sort_id]
+    ws = np.array([0, w13, w23, w13+w23])
+    phis = np.array([f3, M_inf[4,5], M_inf[2,3], M_inf[6,7]])
+    sort_id = np.argsort(ws)
+    r_curves[rr,0,2,:] = ws[sort_id]
+    r_curves[rr,1,2,:] = phis[sort_id]
+    
 # %% plot
 def plot_inf(inf_ws, what):
     bar_width = 0.35
@@ -278,10 +296,21 @@ def plot_inf(inf_ws, what):
 
 # %%
 plot_inf(inf_ws, 'w')
-# plot_inf(inf_us, 'u')
-# plot_inf(eff_ws, 'eff')
-# plot_inf(cgs, 'cg')
+plot_inf(inf_us, 'u')
+plot_inf(eff_ws, 'eff')
+plot_inf(cgs, 'cg')
 # plt.savefig('C53_w_40.pdf')
+
+# %% response curve
+cols = ['orange','orange','blue']
+fig, ax = plt.subplots()
+for nn in range(3):
+    temp_I = r_curves[:,0,nn,:].squeeze()
+    temp_phi = r_curves[:,1,nn,:].squeeze()
+    ax.errorbar(np.mean(temp_I,0), np.mean(temp_phi,0), \
+                xerr=np.std(temp_I,0)/np.sqrt(1), yerr=np.std(temp_phi,0)/np.sqrt(1), color=cols[nn])
+plt.xlabel('I',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
+# plt.savefig('I_phi_error2.pdf')
 
 # %% to-do
 # add function to extract u and effective w... for EI circuit
@@ -303,6 +332,20 @@ plot_inf(inf_ws, 'w')
 #     pickle.dump(data, f)
 
 # print("Variables saved successfully.")
+
+# %%
+# import pickle
+
+# pre_text = 'EI_fig4_curve'
+# filename = pre_text + "_" + str(hidden_stength) + ".pkl"
+
+# # Store variables in a dictionary
+# data = {'r_curves': r_curves, 'cgs': cgs, 'eff_ws': eff_ws,\
+#         'inf_us': inf_us, 'inf_ws': inf_ws}
+
+# # Save variables to a file
+# with open(filename, 'wb') as f:
+#     pickle.dump(data, f)
 
 # %% loading
 # import pickle

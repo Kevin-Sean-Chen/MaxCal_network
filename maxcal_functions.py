@@ -237,11 +237,15 @@ def corr_param(param_true, param_infer, mode='binary'):
     Peerson's  correlation berween true and inferred parameters
     """
     if mode=='binary':
-        true_temp = param_true*0 - 1
-        infer_temp = param_infer*0 - 1
+        true_temp = param_true*0 - 0
+        infer_temp = param_infer*0 - 0
         true_temp[param_true>0] = 1
         infer_temp[param_infer>0] = 1
+        true_temp[param_true<0] = -1
+        infer_temp[param_infer<0] = -1
         corr = np.dot(true_temp, infer_temp)/np.linalg.norm(true_temp)/np.linalg.norm(infer_temp)
+        # corr, _ = pearsonr(true_temp, infer_temp)
+        # corr = np.mean(true_temp == infer_temp)
         return corr
     else:
         true_temp = param_true*1
