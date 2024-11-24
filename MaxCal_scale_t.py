@@ -29,9 +29,9 @@ lt = timesteps*1
 window = 200
 
 # vanilla choice...
-synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
-                              [1, 0, -2],  # Neuron 1 connections
-                              [1, 1, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
+#                               [1, 0, -2],  # Neuron 1 connections
+#                               [1, 1, 0]])*20  #20  # Neuron 2 connections
 
 # cyclic circuit
 # synaptic_weights = np.array([[0, 0, 1],  # Neuron 0 connections
@@ -39,14 +39,14 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
 #                               [0, 1, 0]])*20  #20  # Neuron 2 connections
 
 # common circuit
-# synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
-#                               [1, 0, 0],  # Neuron 1 connections
-#                               [1, 0, 0]])*20  #20  # Neuron 2 connections
-
-# chain circuit
 synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
                               [1, 0, 0],  # Neuron 1 connections
-                              [0, 1, 0]])*20  #20  # Neuron 2 connections
+                              [1, 0, 0]])*20  #20  # Neuron 2 connections
+
+# chain circuit
+# synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
+#                               [1, 0, 0],  # Neuron 1 connections
+#                               [0, 1, 0]])*20  #20  # Neuron 2 connections
 
 S = synaptic_weights*1
 
@@ -59,10 +59,10 @@ def LIF_firing(lt):
     timesteps = lt*1  #30000  # total simulation steps
 
     # Neuron parameters
-    tau = 10.0  # membrane time constant
+    tau = 10.0*1  # membrane time constant
     v_rest = -65.0  # resting membrane potential
     # v_threshold = -50.0  # spike threshold
-    v_threshold = np.array([-50, -50, -50])  # spike threshold for each neuron
+    v_threshold = np.array([-50, -60, -50])  # spike threshold for each neuron
     v_reset = -65.0  # reset potential after a spike
 
     # Synaptic weight matrix
@@ -71,7 +71,7 @@ def LIF_firing(lt):
     noise_amp = 2 #1.7
 
     # Synaptic filtering parameters
-    tau_synaptic = 5.0  # synaptic time constant
+    tau_synaptic = 5.0*1  # synaptic time constant
 
     # Initialize neuron membrane potentials and synaptic inputs
     v_neurons = np.zeros((3, timesteps))

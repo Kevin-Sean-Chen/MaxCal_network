@@ -18,7 +18,7 @@ matplotlib.rc('ytick', labelsize=20)
 # Simulation parameters
 N = 3
 dt = 0.1  # time step in milliseconds
-timesteps = 100000  # total simulation steps
+timesteps = 500000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
@@ -34,9 +34,9 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
                              [1, 0, -2],  # Neuron 1 connections
                              [1, 1,  0]])*20  #20  # Neuron 2 connections
 # cyclic circuit
-synaptic_weights = np.array([[0, 0, 1],  # Neuron 0 connections
-                              [1, 0, 0],  # Neuron 1 connections
-                              [0, 1, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = np.array([[0, 0, 1],  # Neuron 0 connections
+#                               [1, 0, 0],  # Neuron 1 connections
+#                               [0, 1, 0]])*20  #20  # Neuron 2 connections
 
 # common circuit
 # synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
@@ -164,7 +164,7 @@ def spk2statetime(firing, window, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
-spk_states, spk_times = spk2statetime(firing, window=150)  #100,120,150,170,200
+spk_states, spk_times = spk2statetime(firing, window=200)  #100,120,150,170,200
 plt.figure()
 plt.plot(spk_states)
 
