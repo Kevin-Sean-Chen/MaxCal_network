@@ -18,7 +18,7 @@ matplotlib.rc('ytick', labelsize=20)
 # Simulation parameters
 N = 3
 dt = 0.1  # time step in milliseconds
-timesteps = 500000  # total simulation steps
+timesteps = 100000  # total simulation steps
 lt = timesteps*1
 
 # Neuron parameters
@@ -47,6 +47,11 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
 # synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
 #                               [1, 0, 0],  # Neuron 1 connections
 #                               [0, 1, 0]])*20  #20  # Neuron 2 connections
+
+# conv circuit
+synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
+                              [0, 0, 0],  # Neuron 1 connections
+                              [1, 1, 0]])*20  #20  # Neuron 2 connections
 
 # random circuit
 # synaptic_weights = (np.random.rand(3,3)+1)*20

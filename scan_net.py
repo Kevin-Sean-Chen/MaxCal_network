@@ -18,6 +18,8 @@ import matplotlib
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
+# np.random.seed(42)
+
 # %%
 def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None):
     """
@@ -44,7 +46,7 @@ def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None):
     
     ### rescaling
     if syn_ratio is not None:
-        synaptic_weights[2,1]*=syn_ratio
+        synaptic_weights[2,0]*=syn_ratio
         # kk = list(test.keys())[0]
         # vv = list(test.values())[0]
         # if kk=='EI':
@@ -114,13 +116,13 @@ combinations = list(itertools.product(spins, repeat=N))  # possible configuratio
 lt = 100000
 
 # %% scanning loop
-w_s = np.array([1,2,4,8,16])  ### for network strength
-n_s = np.array([1,2,4,8,16])  ### for noist stength
-d_s = np.array([5,30,60,90, 120])  ### for synaptic delay  (pick one neuron for delay)
+w_s = np.array([1,2,4,8,16])*1  ### for network strength
+n_s = np.array([0,2,4,8,16])*1  ### for noist stength
+d_s = np.array([1,30,60,90, 120])*1  ### for synaptic delay  (pick one neuron for delay)
 h_s = np.array([1,2,4,8,16])  ### for heterogeneious-ness (pick a pair to rescale)
 
-fault_w = 20  ### defualt variables if not tuned
-fault_n = 2
+fault_w = np.array([16,16,16])+4 #20*1  ### defualt variables if not tuned
+fault_n = np.array([2,2,2])
 fault_d = 0
 fault_h = 0
 
@@ -131,18 +133,18 @@ coss = R2s*0
 ### EI balanced
 Wij_ei = np.array([[0, 1, -2],  # Neuron 0 connections
                 [1, 0, -2],  # Neuron 1 connections
-                [1, 1, 0]])
+                [1, 1, 0]])*2
 ### common-input
 Wij_common = np.array([[0, 0, 0],  # Neuron 0 connections
                 [1, 0, 0],  # Neuron 1 connections
-                [1, 0, 0]])
+                [1, 0, 0]])*5
 ## convernged with different strength
 # Wij_converge = np.array([[0, 0, 0],  # Neuron 0 connections
 #                 [0, 0, 0],  # Neuron 1 connections
 #                 [10, 1, 0]])
 Wij_converge = np.array([[0, 0, 0],  # Neuron 0 connections
                 [0, 0, 0],  # Neuron 1 connections
-                [1, 1, 0]])
+                [1, 1, 0]])*5
 
 Ws = (Wij_ei, Wij_common, Wij_converge)  # list of motif types
 
@@ -157,8 +159,8 @@ for ww in range(3):
     Wij = Ws[ww]  ### asign motif
     for ii in range(len(d_s)):
         print(ww); print(ii)
-        S = Wij*fault_w #w_s[ii]
-        firing = LIF_firing(S, fault_n, syn_delay=None, syn_ratio=h_s[ii])
+        S = Wij*fault_w[ww] #w_s[ii]  #
+        firing = LIF_firing(S, fault_n[ww]+w_s[ii]*0, syn_delay=None, syn_ratio=None)  ### tune noise, delay, or ratio
         minisi = compute_min_isi(firing)
         adapt_window = 100 #int(minisi*10)  #100
         spk_states, spk_times = spk2statetime(firing, adapt_window)  # embedding states
@@ -170,15 +172,15 @@ for ww in range(3):
         observations = np.concatenate((tau_, C_.reshape(-1))) 
         
         ### run max-cal!
-        constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-        bounds = [(.0, 100)]*num_params
+        # constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+        # bounds = [(.0, 100)]*num_params
 
-        # Perform optimization using SLSQP method
-        param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-        result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+        # # Perform optimization using SLSQP method
+        # param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+        # result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+        # param_temp = result.x
         
-        # computed and record the corresponding KL
-        param_temp = result.x
+        # # computed and record the corresponding KL
         M_inf = (C_/tau_[:,None]) #+ 1/lt  # to prevent exploding
         # M_inf, pi_inf = param2M(param_temp)
         f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
@@ -191,11 +193,16 @@ for ww in range(3):
         R2s[ww, ii] = correlation_coefficient
         signs[ww, ii] = corr_param(true_s, inf_w, 'binary')
         coss[ww, ii] = cos_ang(inf_w, true_s)
-        print(correlation_coefficient)
+        print(cos_ang(inf_w, true_s))
         
 # %%
-scan_x = h_s*1
+# scan_x = h_s*1
+scan_x = np.array([1, 2, 4, 8, 16])
 plt.figure()
 plt.subplot(131); plt.semilogx(scan_x, R2s.T,'-o', label=['EI', 'comm', 'conv']); plt.title('R2'); plt.legend()
-plt.subplot(132); plt.semilogx(scan_x, signs.T,'-o', label=['EI', 'comm', 'conv']); plt.title('signed corr');plt.xlabel('difference')
+plt.subplot(132); plt.semilogx(scan_x, signs.T,'-o', label=['EI', 'comm', 'conv']); plt.title('signed corr');plt.xlabel('repeats...')
 plt.subplot(133); plt.semilogx(scan_x, coss.T,'-o', label=['EI', 'comm', 'conv']); plt.title('cosine')
+
+#### TO-DO #####
+# tune untill the initial point is close, by tuning weights and maybe noise
+
