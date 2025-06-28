@@ -388,6 +388,7 @@ param_temp = result.x
 
 # %% attempt to compare inferred M and nework W... ask Peter~
 M_inf, pi_inf = param2M(param_temp)
+M_inf = (C_/tau_[:,None])
 plt.figure()
 plt.imshow(M_inf, aspect='auto')
 plt.colorbar()

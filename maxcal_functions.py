@@ -24,7 +24,7 @@ N = 3
 nc = 2**N
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
-lt = 30000
+lt = 100000
 
 # %% make blocks for contraints
 def word_id(word):
@@ -174,7 +174,7 @@ def compute_tauC(states, times, nc=nc, combinations=combinations, lt=None):
                 C[ii,jj] += 1  ### counting the transtion
     return tau, C    
 
-def compute_min_isi(firing, N=N):
+def compute_min_isi(firing, N=N, lt=lt):
     isi = np.zeros(N)
     for nn in range(N):
         # spk_i = np.array([firing[ii][0] for ii in range(lt) if len(firing[ii][0])>0 and firing[ii][1]==nn]).squeeze()
