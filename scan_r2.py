@@ -19,12 +19,12 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 # %%
-def LIF_firing(synaptic_weights, noise_amp, syn3_tau=5):
+def LIF_firing(synaptic_weights, noise_amp, syn3_tau=5, lt=100000):
     """
     given synaptic weights and noise amplitude, turn 3-neuron spiking time series
     """
     dt = 0.1  # time step in milliseconds
-    timesteps = 50000  # total simulation steps
+    timesteps = lt*1  # total simulation steps
 
     # Neuron parameters
     tau = 10.0  # membrane time constant
@@ -85,7 +85,7 @@ nc = 2**3
 num_params = int((N*2**N)) 
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
-lt = 50000
+lt = 100000
 
 # %% scanning loop
 w_s = np.array([5,10,20,40])
@@ -100,13 +100,13 @@ Wij = np.array([[0, 1, -2],  # Neuron 0 connections
                 [1, 0, -2],  # Neuron 1 connections
                 [1, 1, 0]])
 ### common-input
-# Wij = np.array([[0, 0, 0],  # Neuron 0 connections
-#                 [1, 0, 0],  # Neuron 1 connections
-                # [1, 0, 0]])
+Wij = np.array([[0, 0, 0],  # Neuron 0 connections
+                [1, 0, 0],  # Neuron 1 connections
+                [1, 0, 0]])
 ### convernged with different strength
 # Wij = np.array([[0, 0, 0],  # Neuron 0 connections
 #                 [0, 0, 0],  # Neuron 1 connections
-#                 [10, 1, 0]])
+#                 [1, 1, 0]])
 
 P0 = np.ones((nc,nc))  # uniform prior
 np.fill_diagonal(P0, np.zeros(nc))
@@ -119,11 +119,11 @@ Cp_condition = np.ones(dofs_all)
 for ww in range(len(w_s)):
     for nn in range(len(n_s)):
         print(ww); print(nn)
-        S = Wij*40#w_s[ww]
-        firing = LIF_firing(S, n_s[nn], w_s[ww])
-        minisi = compute_min_isi(firing)
-        adapt_window = int(minisi*10)  #100
-        spk_states, spk_times = spk2statetime(firing, adapt_window)  # embedding states
+        S = Wij*w_s[ww]
+        firing = LIF_firing(S, n_s[nn], w_s[ww], lt=lt)
+        minisi = compute_min_isi(firing, lt=lt)
+        adapt_window = 150#int(minisi*10)  #100
+        spk_states, spk_times = spk2statetime(firing, adapt_window, lt=lt)  # embedding states
         tau,C = compute_tauC(spk_states, spk_times)  # emperical measurements
         ### not scanning for now...
         rank_tau = np.argsort(tau)[::-1]  # ranking occupency
@@ -132,15 +132,15 @@ for ww in range(len(w_s)):
         observations = np.concatenate((tau_, C_.reshape(-1))) 
         
         ### run max-cal!
-        constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-        bounds = [(.0, 100)]*num_params
+        # constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
+        # bounds = [(.0, 100)]*num_params
 
-        # Perform optimization using SLSQP method
-        param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-        result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
+        # # Perform optimization using SLSQP method
+        # param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
+        # result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
         
         # computed and record the corresponding KL
-        param_temp = result.x
+        # param_temp = result.x
         M_inf = (C_/tau_[:,None]) #+ 1/lt  # to prevent exploding
         # M_inf, pi_inf = param2M(param_temp)
         f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
