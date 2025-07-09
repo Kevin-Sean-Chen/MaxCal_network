@@ -137,6 +137,7 @@ reps = 5
 
 # %% scanning loop
 w_s = np.array([1,2,4,8,16])*2  ### for network strength
+w_s = np.array([2,4,8,16,32])*2 
 n_s = np.array([1,2,4,8,16])*1  ### for noist stength
 d_s = np.array([0.1,30,60,90, 120])*5  ### for synaptic delay  (pick one neuron for delay)
 h_s = np.array([1,2,4,8,16])  ### for heterogeneious-ness (pick a pair to rescale)
