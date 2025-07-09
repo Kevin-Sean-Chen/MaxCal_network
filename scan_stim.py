@@ -92,7 +92,7 @@ def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None, stim
         ### single-neuron perturbation  
         if stim is True:
             if t % stim_inter == 0:
-                pert_neuron = 2 #random.randint(0, 2) # pick neuron
+                pert_neuron = 2 #random.randint(0, 2) #2 # pick neuron
                 # print(pert_neuron,'++++++++++++++')
                 counter = 1
             # if t % stim_inter == 0 and counter < stim_dur:  # logic for perturbation
@@ -135,7 +135,7 @@ num_params = int((N*2**N))
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 lt = 50000 #100000
-reps = 20
+reps = 30
 
 # %% scanning loop
 w_s = np.array([1,2,4,8,16])*2  ### for network strength
@@ -235,6 +235,67 @@ for ii in range(0,1):  ### pick one motif
         plt.errorbar(scan_x, np.mean(coss[ii,:,:, ss],1), np.std(coss[ii,:,:, ss],1)); #plt.title('cos'); #plt.xscale('log');
 
 plt.xlabel('weights', fontsize=20); plt.ylabel('cos', fontsize=20) ;plt.ylim([0,1])
+
+# %% try violin plots
+###############################################################################
+
+# Re-import necessary modules after kernel reset
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Example vectors (replace with your own data)
+data1 = coss[0,2,:, 0]
+data2 = coss[0,2,:, 1]
+
+# Plot side-by-side violin plots
+plt.figure(figsize=(6, 4))
+plt.violinplot([data1, data2], positions=[1, 2], showmeans=True, widths=0.7)
+
+plt.xticks([1, 2], ['Condition 1', 'Condition 2'])
+plt.ylabel('Value')
+plt.title('Comparison of Two Conditions')
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.show()
+
+# %%
+# Simulated paired data
+paired_data1 = (coss[0,1,:, 0], coss[0,1,:, 1])
+paired_data2 = (coss[0,2,:, 0], coss[0,2,:, 1])
+
+# Stack into data array
+all_data = [paired_data1[0], paired_data1[1], paired_data2[0], paired_data2[1]]
+
+# Define x positions for grouped violins
+positions = [1, 2, 4, 5]  # space between groups
+colors = ['skyblue', 'lightcoral'] * 2
+
+# Plot
+fig, ax = plt.subplots(figsize=(8, 5))
+
+parts = ax.violinplot(all_data, positions=positions, showmeans=True, widths=0.7)
+
+# Custom coloring
+for i, pc in enumerate(parts['bodies']):
+    pc.set_facecolor(colors[i])
+    pc.set_edgecolor('black')
+    pc.set_alpha(0.8)
+
+# Customize
+ax.set_xticks([1.5, 4.5])
+ax.set_xticklabels(['w=8', 'w=32'])
+ax.set_ylabel('cosine', fontsize=20)
+ax.grid(True, linestyle='--', alpha=0.5)
+
+# Add legend
+from matplotlib.patches import Patch
+legend_elements = [Patch(facecolor='skyblue', edgecolor='black', label='spon.'),
+                   Patch(facecolor='lightcoral', edgecolor='black', label='perturbed')]
+ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1), fontsize=15)
+
+plt.tight_layout()
+plt.show()
+
+
 # %%
 # scan_x = h_s*1
 # scan_x = np.array([1, 2, 4, 8, 16])
@@ -251,9 +312,9 @@ plt.xlabel('weights', fontsize=20); plt.ylabel('cos', fontsize=20) ;plt.ylim([0,
 # %% saving data for plot later
 ###############################################################################
 # %% saving...
-# import pickle
+import pickle
 
-# pre_text = 'remedy_stim'
+# pre_text = 'remedy_stim_Ionly'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
@@ -265,3 +326,72 @@ plt.xlabel('weights', fontsize=20); plt.ylabel('cos', fontsize=20) ;plt.ylim([0,
 #     pickle.dump(data, f)
 
 # print("Variables saved successfully.")
+
+# %% loading all
+fname = 'C:/Users/kevin/Documents/github/MaxCal_network/remedy_stim_Ionly.pkl'
+with open(fname, 'rb') as f:
+    loaded_data = pickle.load(f)
+coss_Ionly, scan_x = loaded_data['coss'], loaded_data['scan_x']
+fname = 'C:/Users/kevin/Documents/github/MaxCal_network/remedy_stim_Eonly.pkl'
+with open(fname, 'rb') as f:
+    loaded_data = pickle.load(f)
+coss_Eonly, scan_x = loaded_data['coss'], loaded_data['scan_x']
+fname = 'C:/Users/kevin/Documents/github/MaxCal_network/remedy_stim_rand.pkl'
+with open(fname, 'rb') as f:
+    loaded_data = pickle.load(f)
+coss_rand, scan_x = loaded_data['coss'], loaded_data['scan_x']
+
+# %%
+paired_data1 = (coss[0,1,:, 0], coss[0,1,:, 1], coss_Eonly[0,1,:,1], coss_rand[0,1,:,1])
+paired_data2 = (coss[0,2,:, 0], coss[0,2,:, 1], coss_Eonly[0,2,:,1], coss_rand[0,2,:,1])
+
+# Extract data for four conditions in each group
+group1_data = [
+    coss[0, 1, :, 0],          # spontaneous
+    coss[0, 1, :, 1],          # perturbed
+    coss_Eonly[0, 1, :, 1],    # E-only
+    coss_rand[0, 1, :, 1]      # randomized
+]
+
+group2_data = [
+    coss[0, 2, :, 0],
+    coss[0, 2, :, 1],
+    coss_Eonly[0, 2, :, 1],
+    coss_rand[0, 2, :, 1]
+]
+
+# Combine data
+all_data = group1_data + group2_data
+
+# Define x positions for 4 violins per group
+positions = [1, 2, 3, 4, 6, 7, 8, 9]
+colors = ['skyblue', 'lightcoral', 'mediumseagreen', 'plum'] * 2
+
+# Plot
+fig, ax = plt.subplots(figsize=(10, 5))
+
+parts = ax.violinplot(all_data, positions=positions, showmeans=True, widths=0.7)
+
+# Custom coloring
+for i, pc in enumerate(parts['bodies']):
+    pc.set_facecolor(colors[i])
+    pc.set_edgecolor('black')
+    pc.set_alpha(0.8)
+
+# Customize
+ax.set_xticks([2.5, 7.5])
+ax.set_xticklabels(['w=8', 'w=32'])
+ax.set_ylabel('cosine', fontsize=14)
+ax.grid(True, linestyle='--', alpha=0.5)
+
+# Add legend
+legend_elements = [
+    Patch(facecolor='skyblue', edgecolor='black', label='spon.'),
+    Patch(facecolor='lightcoral', edgecolor='black', label='I-only'),
+    Patch(facecolor='mediumseagreen', edgecolor='black', label='E-only'),
+    Patch(facecolor='plum', edgecolor='black', label='rand.')
+]
+ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1), fontsize=15)
+
+plt.tight_layout()
+plt.show()
