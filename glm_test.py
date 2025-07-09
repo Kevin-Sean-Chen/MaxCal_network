@@ -19,7 +19,7 @@ import random
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
-np.random.seed(37) #1, 37
+np.random.seed(1) #1, 37
 
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
@@ -184,6 +184,7 @@ stim_params = np.array([100, 200, 400, 800, 1600]) ### scanning for longer inter
 stim_params = np.array([1., 2., 4, 8, 16])  ### stim duration
 
 w_s = np.array([1,2,4,8,16])*2  ### for network strength
+w_s = np.array([2,4,8,16,32, 64])*2
 # w_s = np.array([2, 4, 16])*2*2  ### for network strength
 
 n_s = np.array([1,2,4,8,16])*1  ### for noist stength
@@ -367,13 +368,14 @@ for ii in range(0,1):  ### pick one motif
 # %% bar plots
 
 selected_motif = 0
-n_groups = 5
+n_groups = 6
 n_conditions = 2
 n_measurements = 3
 
 meas = [R2s, signs, coss]
 
-group_labels = ['w=2', '4', '8', '16', '32']
+# group_labels = ['w=2', '4', '8', '16', '32']
+group_labels = ['w=4', '8', '16', '32', '64', '128']
 condition_labels = ['MaxCal', 'GLM', 'GC']
 measurement_titles = ['R2', 'sign', 'cos']
 
@@ -418,7 +420,7 @@ plt.show()
 # %% saving...
 import pickle
 
-# pre_text = 'glm_comparison'
+# pre_text = 'glm_comparison3'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
@@ -433,7 +435,7 @@ import pickle
 
 # %%
 def plot_perturbed(purt='noise'):
-    fname = 'C:/Users/kevin/Documents/github/MaxCal_network/GC_comparison.pkl'
+    fname = 'C:/Users/kevin/Documents/github/MaxCal_network/GC_comparison3.pkl'
     with open(fname, 'rb') as f:
         loaded_data = pickle.load(f)
     coss, scan_x = loaded_data['coss'], loaded_data['scan_x']
@@ -448,7 +450,7 @@ def plot_perturbed(purt='noise'):
     mean_j = np.nanmean(meas_i[selected_motif,:,:, 1],1)
     std_j = np.nanstd(meas_i[selected_motif,:,:, 1],1)
     
-    fname = 'C:/Users/kevin/Documents/github/MaxCal_network/glm_comparison.pkl'
+    fname = 'C:/Users/kevin/Documents/github/MaxCal_network/glm_comparison3.pkl'
     with open(fname, 'rb') as f:
         loaded_data = pickle.load(f)
     coss, scan_x = loaded_data['coss'], loaded_data['scan_x']

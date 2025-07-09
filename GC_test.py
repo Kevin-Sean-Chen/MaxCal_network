@@ -24,7 +24,7 @@ import random
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
-np.random.seed(37) #1, 37
+np.random.seed(42) #1, 37
 
 # %% make the same perturbtion curve, now with Granger causality inference
 
@@ -140,6 +140,7 @@ stim_params = np.array([100, 200, 400, 800, 1600]) ### scanning for longer inter
 stim_params = np.array([1., 2., 4, 8, 16])  ### stim duration
 
 w_s = np.array([1,2,4,8,16])*2  ### for network strength
+w_s = np.array([2,4,8,16,32, 64])*2
 # w_s = np.array([2, 4, 16])*2  ### for network strength
 
 n_s = np.array([1,2,4,8,16])*1  ### for noist stength
@@ -233,7 +234,7 @@ firing,volt = LIF_firing_voltage(Wij_ei*16, 2, syn_delay=None, syn_ratio=None, s
 data = volt.T*1
 
 # Step 3: Run Inference
-conn_matrix, weight_matrix = infer_granger_causality_weight_sign(data, maxlag=5, alpha=0.05)
+conn_matrix, weight_matrix = infer_granger_causality_weight_sign(data, maxlag=10, alpha=0.05)
 
 print("Binary Granger Causality Matrix (Detected Links):")
 print(conn_matrix)
@@ -298,7 +299,7 @@ for rr in range(reps): ### repears
             
             ### GC inference
             data = volt.T*1
-            conn_matrix, wm = infer_granger_causality_weight_sign(data, maxlag=10, alpha=0.05) ### play around with lag ###
+            conn_matrix, wm = infer_granger_causality_weight_sign(data, maxlag=5, alpha=0.05) ### play around with lag ###
             inf_gc = np.array([wm[0,1],wm[0,2],wm[1,0],wm[1,2],wm[2,1],wm[2,0]])
             cceff,_ = pearsonr(inf_gc, true_s)
             R2s[ww, ii, rr, 1] = cceff
@@ -322,13 +323,13 @@ for ii in range(0,1):  ### pick one motif
 # %% bar plots
 
 selected_motif = 0
-n_groups = 5
+n_groups = 6
 n_conditions = 2
 n_measurements = 3
 
 meas = [R2s, signs, coss]
 
-group_labels = ['w=2', '4', '8', '16', '32']
+group_labels = ['w=2', '4', '8', '16', '32', '64']
 condition_labels = ['MaxCal', 'Granger']
 measurement_titles = ['R2', 'sign', 'cos']
 
@@ -373,7 +374,7 @@ plt.show()
 # %% saving...
 import pickle
 
-# pre_text = 'GC_comparison'
+# pre_text = 'GC_comparison3'
 # filename = pre_text + ".pkl"
 
 # # Store variables in a dictionary
