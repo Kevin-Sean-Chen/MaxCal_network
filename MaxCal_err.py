@@ -54,6 +54,7 @@ synaptic_weights = np.array([[0, 1.7, -2.],  # Neuron 0 connections
 #                               [0, 1, 0]])*20  #20  # Neuron 2 connections
 
 S = synaptic_weights*1
+true_s = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
 
 # %% for C5_3
 hidden_stength = 40  # 2 10 20 30 40
@@ -373,3 +374,25 @@ plt.xlabel('I',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=
 # plt.xlabel('h/s', fontsize=20)
 # plt.ylabel('cos-ang', fontsize=20); plt.legend(fontsize=20)
 #### plt.savefig('c53_error_cos.pdf')
+
+# %% plotting cosine angle for inferred weights
+# import pickle
+
+# with open(file, "rb") as f:   # 'rb' = read binary
+#     data = pickle.load(f)
+
+# print(type(data))
+# print(data)
+
+# items = ['inf_ws', 'inf_us', 'eff_ws']
+# inff = ['w', 'u','w\'']
+# for ii in range(len(items)):
+#     temp = data[items[ii]]
+#     coss = []
+#     for jj in range(temp.shape[0]):
+#         coss.append(cos_ang(true_s, temp[jj,:]))
+#     coss = np.array(coss)
+#     plt.bar(inff[ii], np.nanmean(coss), color='k', alpha=0.5)
+#     plt.errorbar(inff[ii], np.nanmean(coss), yerr=np.nanstd(coss),color='k')
+# plt.ylabel('cosine angle', fontsize=20)
+### plt.savefig('EI_compare_wu.pdf')
