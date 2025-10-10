@@ -87,7 +87,7 @@ def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None, lt=1
         if syn_delay is not None:
             ### place buffer to handle delayed spikes
             delay_buffer = np.roll(delay_buffer, -1)
-            delay_buffer[0, -1] = spikes[1, t-1]  # Add latest spike from Neuron 2
+            delay_buffer[0, -1] = spikes[0, t-1]  # Add latest spike from Neuron 2
             synaptic_input[2] += 1. * delay_buffer[0, 0]  ### delayed to the third neuron
         synaptic_inputs[:, t] = synaptic_inputs[:, t-1] + dt*( \
                                 -synaptic_inputs[:, t-1]/tau_synaptic + synaptic_input)
@@ -140,7 +140,7 @@ w_s = np.array([1,2,4,8,16])*2  ### for network strength
 w_s = np.array([2,4,8,16,32])*2 
 n_s = np.array([1,2,4,8,16])*1  ### for noist stength
 d_s = np.array([0.1,30,60,90, 120])*5  ### for synaptic delay  (pick one neuron for delay)
-h_s = np.array([1,2,4,8,16])  ### for heterogeneious-ness (pick a pair to rescale)
+# h_s = np.array([1,2,4,8,16])  ### for heterogeneious-ness (pick a pair to rescale)
 
 fault_w = np.array([20,20,10])+0 #20*1  ### defualt variables if not tuned
 fault_n = np.array([2,2,2])
@@ -185,7 +185,7 @@ for rr in range(reps):
         for ii in range(len(d_s)):
             print(ww); print(ii)
             S = Wij *fault_w[ww] #*w_s[ii]  #
-            firing = LIF_firing(S, fault_n[ww]*1+n_s[ii]*1, syn_delay=None, syn_ratio=None, lt=lt)  ### tune noise, delay, or ratio
+            firing = LIF_firing(S, fault_n[ww]*1+n_s[ii]*0, syn_delay=d_s[ii], syn_ratio=None, lt=lt)  ### tune noise, delay, or ratio
             # minisi = compute_min_isi(firing)
             adapt_window = 150 #int(minisi*10)  #100
             spk_states, spk_times = spk2statetime(firing, adapt_window)  # embedding states
@@ -234,12 +234,12 @@ for rr in range(reps):
 
 # %% plotting
 plt.figure()
-scan_x = w_s #n_s #w_s #d_s*.1
+scan_x = d_s #n_s #w_s #d_s*.1
 for ii in range(0,3):
-    plt.subplot(131); plt.errorbar(scan_x, np.mean(R2s[ii,:,:],1), np.std(R2s[ii,:,:],1)); plt.title('R2'); plt.xscale('log');
-    plt.subplot(132); plt.errorbar(scan_x, np.mean(signs[ii,:,:],1), np.std(signs[ii,:,:],1)); plt.title('sign'); plt.xscale('log');
+    plt.subplot(131); plt.errorbar(scan_x, np.mean(R2s[ii,:,:],1), np.std(R2s[ii,:,:],1)); plt.title('R2'); #plt.xscale('log');
+    plt.subplot(132); plt.errorbar(scan_x, np.mean(signs[ii,:,:],1), np.std(signs[ii,:,:],1)); plt.title('sign'); #plt.xscale('log');
     plt.xlabel('difference',fontsize=20)
-    plt.subplot(133); plt.errorbar(scan_x, np.mean(coss[ii,:,:],1), np.std(coss[ii,:,:],1)); plt.title('cos'); plt.xscale('log');
+    plt.subplot(133); plt.errorbar(scan_x, np.mean(coss[ii,:,:],1), np.std(coss[ii,:,:],1)); plt.title('cos'); #plt.xscale('log');
 
 
 # %%
@@ -287,12 +287,26 @@ def plot_perturbed(purt='noise'):
         loaded_data = pickle.load(f)
     coss, scan_x = loaded_data['coss'], loaded_data['scan_x']
     # return coss, scan_x
+    cols = ['r', 'b', 'g']
     plt.figure()
     for ii in range(0,3):
-        plt.errorbar(scan_x, np.mean(coss[ii,:,:],1), np.std(coss[ii,:,:],1));
+        # plt.errorbar(scan_x, np.mean(coss[ii,:,:],1), np.std(coss[ii,:,:],1));
+        mean_vals = np.mean(coss[ii, :, :], axis=1)
+        std_vals = np.std(coss[ii, :, :], axis=1)
+        plt.plot(scan_x, mean_vals, color=cols[ii], linewidth=3.5, label='Mean')
+        plt.fill_between(scan_x, mean_vals - std_vals, mean_vals + std_vals, 
+                         color=cols[ii], alpha=0.1, label='±1 STD')
+        # plt.savefig(purt+".pdf", format="pdf", bbox_inches="tight")
 
-plot_perturbed('weight'); plt.xlabel('weight'); plt.ylabel('cos'); plt.xscale('log')    
+plot_perturbed('weight'); plt.xlabel('weight'); plt.ylabel('cos'); plt.xscale('log')   
+# plt.savefig("weight"+".pdf", format="pdf", bbox_inches="tight")
+ 
 plot_perturbed('noise'); plt.xlabel('noise'); plt.ylabel('cos'); plt.xscale('log')
+# plt.savefig("noise"+".pdf", format="pdf", bbox_inches="tight")
+
 plot_perturbed('delay'); plt.xlabel('delay'); plt.ylabel('cos'); #plt.xscale('log')
+# plt.savefig("delay"+".pdf", format="pdf", bbox_inches="tight")
+
 plot_perturbed('diff'); plt.xlabel('diff'); plt.ylabel('cos'); plt.xscale('log')
+# plt.savefig("diff"+".pdf", format="pdf", bbox_inches="tight")
 

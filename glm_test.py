@@ -478,3 +478,4 @@ def plot_perturbed(purt='noise'):
     ax.legend()
 
 plot_perturbed(''); plt.xlabel('weights',fontsize=20); plt.ylabel('cos',fontsize=20); #plt.xscale('log')   
+# plt.savefig("comparison.pdf", format="pdf", bbox_inches="tight")

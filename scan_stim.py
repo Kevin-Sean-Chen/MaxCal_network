@@ -395,3 +395,4 @@ ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1), f
 
 plt.tight_layout()
 plt.show()
+# plt.savefig("remedy.pdf", format="pdf", bbox_inches="tight")
