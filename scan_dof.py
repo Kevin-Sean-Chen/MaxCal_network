@@ -6,7 +6,7 @@ Created on Mon Mar 25 14:21:55 2024
 """
 
 from maxcal_functions import spk2statetime, compute_tauC, param2M, eq_constraint, objective_param,\
-                            compute_min_isi, sim_Q, edge_flux_inf, MaxCal_D, EP, corr_param, sign_corr
+                            compute_min_isi, sim_Q, edge_flux_inf, MaxCal_D, EP, corr_param, sign_corr, cos_ang
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -17,14 +17,14 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 # %% baiscs
-rep_finite = 1  #10 repeat finit oprimization runs
+rep_finite = 10  #10 repeat finit oprimization runs
 N = 3
 nc = 2**3
 num_params = int((N*2**N)) 
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 param_true = np.random.rand(num_params)*1  # use rand for now...
-total_time = 50
+total_time = 50*2
 time_step = 1
 
 # %% for inifinite
@@ -33,6 +33,14 @@ M,pi_ss = param2M(param_true)
 tau_infinite = pi_ss*total_time
 flux_ij_true = edge_flux_inf(param_true)
 C_infinite = flux_ij_true* total_time
+
+def M2weights(M):
+    M_inf = M*1
+    f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
+    w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
+    w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
+    inf_w = np.array([w12,w13,w21,w23,w32,w31])
+    return inf_w
 
 # %% building constraints
 dofs = num_params*1
@@ -91,7 +99,9 @@ def run_dof(observations):
         kij_inf,_ = param2M(param)
         kls[ii] = MaxCal_D(kij_inf, P0, param)
         eps[ii] = EP(kij_inf)
-        r2s[ii] = corr_param(param_true, param, '0')  # non-biniary version!
+        # r2s[ii] = corr_param(param_true, param, '0')  # non-biniary version! #### OLD r2 for correlation
+        true_w, inf_w = M2weights(M), M2weights(kij_inf)
+        r2s[ii] = cos_ang(true_w, inf_w)  ### NEW: cosine angle
         sign[ii] = sign_corr(param_true, param)  # for biniaized sign
         
         print(ii)    
@@ -151,8 +161,8 @@ mean = np.mean(kls_fin,1)
 plt.fill_between(np.arange(len(kls_inf)), mins, maxs, color='gray', alpha=0.3)
 plt.plot(kls_fin,'.', alpha=0.1, color='k')
 plt.plot(kls_inf,'-o', label='infinite data')
-plt.legend(fontsize=20); plt.ylabel('KL', fontsize=20); plt.ylim([3.9,6])
-# plt.savefig('KL_std.pdf')
+plt.legend(fontsize=20); plt.ylabel('KL', fontsize=20); #plt.ylim([3.9,6])
+# plt.savefig('KL_dof_std.pdf')
 
 # %%
 plt.figure()
@@ -165,7 +175,7 @@ plt.fill_between(np.arange(len(kls_inf)), mins, maxs, color='gray', alpha=0.3, l
 plt.plot(r2_fin,'.',  alpha=0.1, color='k')
 plt.plot(r2_inf,'-o', label='analytic')
 # plt.legend(fontsize=20); plt.ylabel('corr', fontsize=20)
-# plt.savefig('R2_std.pdf')
+# plt.savefig('cos_dof_std.pdf')
 
 # %%
 plt.figure()

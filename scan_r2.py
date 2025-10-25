@@ -85,7 +85,7 @@ nc = 2**3
 num_params = int((N*2**N)) 
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
-lt = 100000
+lt = 100000#150000
 
 # %% scanning loop
 w_s = np.array([5,10,20,40])
@@ -100,9 +100,9 @@ Wij = np.array([[0, 1, -2],  # Neuron 0 connections
                 [1, 0, -2],  # Neuron 1 connections
                 [1, 1, 0]])
 ### common-input
-Wij = np.array([[0, 0, 0],  # Neuron 0 connections
-                [1, 0, 0],  # Neuron 1 connections
-                [1, 0, 0]])
+# Wij = np.array([[0, 0, 0],  # Neuron 0 connections
+#                 [1, 0, 0],  # Neuron 1 connections
+#                 [1, 0, 0]])
 ### convernged with different strength
 # Wij = np.array([[0, 0, 0],  # Neuron 0 connections
 #                 [0, 0, 0],  # Neuron 1 connections
@@ -173,11 +173,14 @@ img = plt.imshow(signs, aspect='auto',  origin='lower');
 cbar = plt.colorbar(img) # img.set_clim(0.5, .7) 
 plt.xticks(np.arange(len(n_s)), n_s); plt.yticks(np.arange(len(w_s)), w_s)
 plt.xlabel('noise', fontsize=20); plt.ylabel('network', fontsize=20); plt.title('signed R2', fontsize=20)
+
+# %%
 plt.figure()
 img = plt.imshow(coss, aspect='auto',  origin='lower');
 cbar = plt.colorbar(img) # img.set_clim(0.5, .7) 
 plt.xticks(np.arange(len(n_s)), n_s); plt.yticks(np.arange(len(w_s)), w_s)
 plt.xlabel('noise', fontsize=20); plt.ylabel('network', fontsize=20); plt.title('cos-angle', fontsize=20)
+# plt.savefig('w_n_scan.pdf')
 
 # %% IDEAS
 # alter window according to ISI in data
