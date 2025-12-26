@@ -1,2 +1,15 @@
 
 data_pkl/
+
+# Ignore all PDF files
+*.pdf
+
+# Ignore all PKL files
+*.pkl
+
+# Python cache and bytecode files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python

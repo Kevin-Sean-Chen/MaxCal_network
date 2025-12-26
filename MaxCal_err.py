@@ -394,5 +394,6 @@ plt.xlabel('I',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=
 #     coss = np.array(coss)
 #     plt.bar(inff[ii], np.nanmean(coss), color='k', alpha=0.5)
 #     plt.errorbar(inff[ii], np.nanmean(coss), yerr=np.nanstd(coss),color='k')
+#     print( np.nanmean(coss), np.nanstd(coss))
 # plt.ylabel('cosine angle', fontsize=20)
 ### plt.savefig('EI_compare_wu.pdf')
