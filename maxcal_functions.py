@@ -115,6 +115,29 @@ def spk2statetime(firing, window, lt=lt, N=N, combinations=combinations):
     spk_states = states_spk[spk_times].astype(int)   # spiking states
     return spk_states, spk_times
 
+def spk2statetime_4N(firing, window, lt=lt):
+    """
+    4-neuron version of spk2statetime: convert firing list into state ids and transition times.
+    """
+    N4 = 4
+    combinations4 = list(itertools.product(spins, repeat=N4))
+    states_spk = np.zeros(lt-window)
+    for tt in range(lt-window):
+        this_window = firing[tt:tt+window]
+        word = np.zeros(N4)
+        for ti in range(window):
+            if len(this_window[ti][1])>0:
+                this_neuron = np.random.choice(this_window[ti][1])
+                if this_neuron < N4:
+                    word[int(this_neuron)] = 1
+        state_id = combinations4.index(tuple(word))
+        states_spk[tt] = state_id
+
+    trans_temp = np.diff(states_spk)
+    spk_times = np.where(np.abs(trans_temp)>0)[0]
+    spk_states = states_spk[spk_times].astype(int)
+    return spk_states, spk_times
+
 def param2M(param, N=N, combinations=combinations):
     """
     given array of parameters with length N*2**N, network size N, return transition matrix
@@ -174,6 +197,26 @@ def compute_tauC(states, times, nc=nc, combinations=combinations, lt=None):
             if sum(x != y for x, y in zip(combinations[ii], combinations[jj])) == 1:  # ignore those not CTMC for now!
                 C[ii,jj] += 1  ### counting the transtion
     return tau, C    
+
+def compute_tauC_4N(states, times, lt=None):
+    """
+    4-neuron version of compute_tauC: measure occupancy tau and transitions C.
+    """
+    N4 = 4
+    nc4 = 2**N4
+    combinations4 = list(itertools.product(spins, repeat=N4))
+    tau = np.zeros(nc4)
+    C = np.zeros((nc4,nc4))
+    for i in range(len(states)-1):
+        this_state = states[i]
+        tau[this_state] += times[i+1]-times[i]
+
+    for t in range(len(states)-1):
+        ii,jj = states[t], states[t+1]
+        if ii != jj:
+            if sum(x != y for x, y in zip(combinations4[ii], combinations4[jj])) == 1:
+                C[ii,jj] += 1
+    return tau, C
 
 def compute_min_isi(firing, N=N, lt=lt):
     isi = np.zeros(N)
