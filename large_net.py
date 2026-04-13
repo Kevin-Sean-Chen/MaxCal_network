@@ -27,10 +27,33 @@ import numpy as np
 # ----------------------------
 # Simulation settings
 # ----------------------------
-seed(123)  # for reproducibility
+seedi = 123
+seed(seedi)  # for reproducibility
+rng = np.random.default_rng(seedi)
 
 defaultclock.dt = 0.1 * ms
-duration = 20.0*1 * second
+duration = 10.0*1 * second
+
+# ----------------------------
+# Inference Max Cal parameters
+# ----------------------------
+CACHE_MAXCAL = False
+CACHE_PATH = "maxcal_inference_cache.pkl"
+
+### notes for good parameters ###
+# optimal window size
+# sparse connection
+# reasonable noise
+# long durection for higher-order stats
+#################################
+
+# shared inference parameters
+adapt_window = 150
+n_triplet_samples = 100
+n_quartet_samples = 100
+max_attempts_triplet = n_triplet_samples * 5
+max_attempts_quartet = n_quartet_samples * 5
+# ----------------------------
 
 # ----------------------------
 # Network size
@@ -58,12 +81,12 @@ w_e = 0.6 * mV   # excitatory jump
 w_i = -2.0 * mV  # inhibitory jump
 
 # Random connectivity probability
-p_connect = 0.2
+p_connect = 0.1 ##0.2
 
 # External drive and noise
 mu_exc = 15.0 * mV
 mu_inh = 15.0 * mV
-sigma_noise = 1.5 * mV
+sigma_noise = 3. * mV ##1.5
 
 # ----------------------------
 # Model equations
@@ -616,20 +639,20 @@ def infer_triplet_weights_from_firing(firing_triplet, S_sub, lt_steps, adapt_win
     w32 = np.log(max(M_inf[1, 3], eps) / f2)
     w31 = np.log(max(M_inf[1, 5], eps) / f1)
 
-    # Reverse-direction inferred couplings (u-like terms from MaxCal_motif)
-    r1 = max(M_inf[4, 0], eps)
-    r2 = max(M_inf[2, 0], eps)
-    r3 = max(M_inf[1, 0], eps)
+    # Effective couplings (as in MaxCal_motif)
+    w231 = np.log(max(M_inf[3, 7], eps) / f1)
+    w132 = np.log(max(M_inf[5, 7], eps) / f2)
+    w123 = np.log(max(M_inf[6, 7], eps) / f3)
 
-    u12 = -np.log(max(M_inf[6, 4], eps) / r2)
-    u13 = -np.log(max(M_inf[5, 4], eps) / r3)
-    u21 = -np.log(max(M_inf[6, 2], eps) / r1)
-    u23 = -np.log(max(M_inf[3, 2], eps) / r3)
-    u32 = -np.log(max(M_inf[3, 1], eps) / r2)
-    u31 = -np.log(max(M_inf[5, 1], eps) / r1)
+    eff31 = w231 - w21
+    eff32 = w132 - w12
+    eff21 = w231 - w31
+    eff23 = w123 - w13
+    eff12 = w132 - w32
+    eff13 = w123 - w23
 
     inf_w = np.array([w12, w13, w21, w23, w32, w31], dtype=float)
-    inf_u = np.array([u12, u13, u21, u23, u32, u31], dtype=float)
+    inf_u = np.array([eff12, eff13, eff21, eff23, eff32, eff31], dtype=float)
     true_s = np.array([
         S_sub[1, 0], S_sub[2, 0],
         S_sub[0, 1], S_sub[2, 1],
@@ -724,17 +747,6 @@ def infer_quartet_weights_from_firing(firing_quartet, S_sub, lt_steps, adapt_win
 
 
 # %% iterate random 3-neuron motifs from 100-neuron spike data
-CACHE_MAXCAL = True
-CACHE_PATH = "maxcal_inference_cache.pkl"
-
-# shared inference parameters
-adapt_window = 200
-n_triplet_samples = 100
-n_quartet_samples = 100
-max_attempts_triplet = n_triplet_samples * 5
-max_attempts_quartet = n_quartet_samples * 5
-rng = np.random.default_rng(123)
-
 triplet_records = []
 quartet_records = []
 
@@ -994,3 +1006,43 @@ if (triplet_Ru is not None) or (triplet_R is not None) or (quartet_R is not None
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+    # Violin plots for cosine angle (2N, 3N, 4N)
+    cos2 = cos_u_vals if 'cos_u_vals' in locals() else None
+    cos3 = cos_vals if 'cos_vals' in locals() else None
+    cos4 = cos4_vals if 'cos4_vals' in locals() else None
+
+    groups = []
+    labels = []
+    colors = []
+    if cos2 is not None:
+        vals = cos2[np.isfinite(cos2)]
+        if vals.size > 0:
+            groups.append(vals)
+            labels.append('2N (u)')
+            colors.append('tab:orange')
+    if cos3 is not None:
+        vals = cos3[np.isfinite(cos3)]
+        if vals.size > 0:
+            groups.append(vals)
+            labels.append('3N (w)')
+            colors.append('tab:blue')
+    if cos4 is not None:
+        vals = cos4[np.isfinite(cos4)]
+        if vals.size > 0:
+            groups.append(vals)
+            labels.append('4N (w)')
+            colors.append('tab:green')
+
+    if len(groups) > 0:
+        plt.figure(figsize=(6.6, 4.4))
+        vp = plt.violinplot(groups, showmeans=True, showextrema=False)
+        for body, cc in zip(vp['bodies'], colors):
+            body.set_facecolor(cc)
+            body.set_alpha(0.4)
+        vp['cmeans'].set_color('k')
+        plt.xticks(np.arange(1, len(labels) + 1), labels)
+        plt.ylabel("cosine angle")
+        plt.title("Cosine angle: 2N vs 3N vs 4N")
+        plt.tight_layout()
+        plt.show()
