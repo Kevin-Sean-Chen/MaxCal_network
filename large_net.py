@@ -27,7 +27,7 @@ import numpy as np
 # ----------------------------
 # Simulation settings
 # ----------------------------
-seedi = 123
+seedi = 42 ##1
 seed(seedi)  # for reproducibility
 rng = np.random.default_rng(seedi)
 
@@ -48,18 +48,18 @@ CACHE_PATH = "maxcal_inference_cache.pkl"
 #################################
 
 # shared inference parameters
-adapt_window = 150
+adapt_window = 150 ##150
 n_triplet_samples = 100
 n_quartet_samples = 100
-max_attempts_triplet = n_triplet_samples * 5
-max_attempts_quartet = n_quartet_samples * 5
+max_attempts_triplet = n_triplet_samples *1 ##*1 #* 5
+max_attempts_quartet = n_quartet_samples *1
 # ----------------------------
 
 # ----------------------------
 # Network size
 # ----------------------------
 N = 100
-frac_exc = 0.8
+frac_exc = 0.2
 N_exc = int(N * frac_exc)
 N_inh = N - N_exc
 
@@ -77,16 +77,16 @@ tau_e = 5 * ms
 tau_i = 10 * ms
  
 # Connection strengths
-w_e = 0.6 * mV   # excitatory jump
-w_i = -2.0 * mV  # inhibitory jump
+w_e = 0.6*1 * mV   # excitatory jump
+w_i = -2.0*1 * mV  # inhibitory jump
 
 # Random connectivity probability
-p_connect = 0.1 ##0.2
+p_connect = 0.2 ##0.2 # 0.5, 0.1
 
 # External drive and noise
-mu_exc = 15.0 * mV
+mu_exc = 15.0 * mV ## 15.
 mu_inh = 15.0 * mV
-sigma_noise = 3. * mV ##1.5
+sigma_noise = 5. * mV ##5.
 
 # ----------------------------
 # Model equations
@@ -639,20 +639,61 @@ def infer_triplet_weights_from_firing(firing_triplet, S_sub, lt_steps, adapt_win
     w32 = np.log(max(M_inf[1, 3], eps) / f2)
     w31 = np.log(max(M_inf[1, 5], eps) / f1)
 
-    # Effective couplings (as in MaxCal_motif)
-    w231 = np.log(max(M_inf[3, 7], eps) / f1)
-    w132 = np.log(max(M_inf[5, 7], eps) / f2)
-    w123 = np.log(max(M_inf[6, 7], eps) / f3)
+    # Coarse-grained coupling g_ij from 2-neuron marginal transitions
+    def state_idx(bits):
+        return bits[0] * 4 + bits[1] * 2 + bits[2]
 
-    eff31 = w231 - w21
-    eff32 = w132 - w12
-    eff21 = w231 - w31
-    eff23 = w123 - w13
-    eff12 = w132 - w32
-    eff13 = w123 - w23
+    def g_pair(pre_idx, post_idx):
+        other = ({0, 1, 2} - {pre_idx, post_idx}).pop()
+        num_10_11 = 0.0
+        den_10 = 0.0
+        num_00_01 = 0.0
+        den_00 = 0.0
+        for kk in (0, 1):
+            bits_10 = [0, 0, 0]
+            bits_11 = [0, 0, 0]
+            bits_00 = [0, 0, 0]
+            bits_01 = [0, 0, 0]
+
+            bits_10[pre_idx] = 1
+            bits_10[post_idx] = 0
+            bits_10[other] = kk
+
+            bits_11[pre_idx] = 1
+            bits_11[post_idx] = 1
+            bits_11[other] = kk
+
+            bits_00[pre_idx] = 0
+            bits_00[post_idx] = 0
+            bits_00[other] = kk
+
+            bits_01[pre_idx] = 0
+            bits_01[post_idx] = 1
+            bits_01[other] = kk
+
+            i10 = state_idx(bits_10)
+            i11 = state_idx(bits_11)
+            i00 = state_idx(bits_00)
+            i01 = state_idx(bits_01)
+
+            num_10_11 += C_[i10, i11]
+            den_10 += tau_[i10]
+            num_00_01 += C_[i00, i01]
+            den_00 += tau_[i00]
+
+        r_10_11 = num_10_11 / max(den_10, eps)
+        r_00_01 = num_00_01 / max(den_00, eps)
+        return np.log(max(r_10_11, eps) / max(r_00_01, eps))
+
+    g12 = g_pair(0, 1)
+    g13 = g_pair(0, 2)
+    g21 = g_pair(1, 0)
+    g23 = g_pair(1, 2)
+    g32 = g_pair(2, 1)
+    g31 = g_pair(2, 0)
 
     inf_w = np.array([w12, w13, w21, w23, w32, w31], dtype=float)
-    inf_u = np.array([eff12, eff13, eff21, eff23, eff32, eff31], dtype=float)
+    inf_u = np.array([g12, g13, g21, g23, g32, g31], dtype=float)
     true_s = np.array([
         S_sub[1, 0], S_sub[2, 0],
         S_sub[0, 1], S_sub[2, 1],
@@ -746,6 +787,27 @@ def infer_quartet_weights_from_firing(firing_quartet, S_sub, lt_steps, adapt_win
     }
 
 
+def consistency_cosine_triplet(record):
+    """
+    For a triplet record, compare signs of 2N (effective) and 3N couplings.
+    Only if all signs agree, return cosine angle of 3N vs truth.
+    """
+    inf_w = record.get("inf_w")
+    inf_u = record.get("inf_u")
+    true_w = record.get("true_w")
+    if inf_w is None or inf_u is None or true_w is None:
+        return None
+    if inf_w.size != inf_u.size:
+        return None
+    sign_w = np.sign(inf_w)
+    sign_u = np.sign(inf_u)
+    if not np.all(sign_w == sign_u):
+        return None
+    if np.std(inf_w) < 1e-12 or np.std(true_w) < 1e-12:
+        return None
+    return cos_ang(inf_w, true_w)
+
+
 # %% iterate random 3-neuron motifs from 100-neuron spike data
 triplet_records = []
 quartet_records = []
@@ -811,6 +873,13 @@ if len(triplet_records) > 0:
     cos_vals = np.array([rr["cos"] for rr in triplet_records], dtype=float)
     cos_u_vals = np.array([rr["cos_u"] for rr in triplet_records], dtype=float)
 
+    consistent_cos = []
+    for rr in triplet_records:
+        val = consistency_cosine_triplet(rr)
+        if val is not None and np.isfinite(val):
+            consistent_cos.append(val)
+    consistent_cos = np.array(consistent_cos, dtype=float)
+
     triplet_R = R_vals
     triplet_Ru = R_u_vals
 
@@ -839,6 +908,18 @@ if len(triplet_records) > 0:
 
     plt.tight_layout()
     plt.show()
+
+    if consistent_cos.size > 0:
+        plt.figure(figsize=(6.6, 4.4))
+        plt.hist(cos_u_vals[np.isfinite(cos_u_vals)], bins=30, alpha=0.35, label='2N (u)', color='tab:orange', density=True)
+        plt.hist(cos_vals[np.isfinite(cos_vals)], bins=30, alpha=0.35, label='3N (w)', color='tab:blue', density=True)
+        plt.hist(consistent_cos, bins=30, alpha=0.45, label='3N (sign-consistent)', color='tab:green', density=True)
+        plt.xlabel("cosine angle")
+        plt.ylabel("density")
+        plt.title("Cosine distributions: 2N vs 3N vs sign-consistent")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
     # Compare cosine-angle distributions of w and u in one figure
     cos_w_finite = cos_vals[np.isfinite(cos_vals)]
@@ -911,6 +992,43 @@ if len(triplet_records) > 0:
         plt.legend()
         plt.tight_layout()
         plt.show()
+
+    # Violin plots for cosine angle: 2N, 3N, and sign-consistent 3N
+    if cos_u_vals.size > 0 or cos_vals.size > 0 or consistent_cos.size > 0:
+        groups = []
+        labels = []
+        colors = []
+
+        vals2 = cos_u_vals[np.isfinite(cos_u_vals)]
+        if vals2.size > 0:
+            groups.append(vals2)
+            labels.append('2N (u)')
+            colors.append('tab:orange')
+
+        vals3 = cos_vals[np.isfinite(cos_vals)]
+        if vals3.size > 0:
+            groups.append(vals3)
+            labels.append('3N (w)')
+            colors.append('tab:blue')
+
+        valsc = consistent_cos[np.isfinite(consistent_cos)]
+        if valsc.size > 0:
+            groups.append(valsc)
+            labels.append('3N (consistent)')
+            colors.append('tab:green')
+
+        if len(groups) > 0:
+            plt.figure(figsize=(6.8, 4.4))
+            vp = plt.violinplot(groups, showmeans=True, showextrema=False)
+            for body, cc in zip(vp['bodies'], colors):
+                body.set_facecolor(cc)
+                body.set_alpha(0.4)
+            vp['cmeans'].set_color('k')
+            plt.xticks(np.arange(1, len(labels) + 1), labels)
+            plt.ylabel("cosine angle")
+            plt.title("Cosine angle: 2N vs 3N vs consistent")
+            plt.tight_layout()
+            plt.show()
 
 # %% iterate random 4-neuron motifs from 100-neuron spike data
 if not quartet_records:
