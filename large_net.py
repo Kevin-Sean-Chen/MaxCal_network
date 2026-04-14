@@ -27,7 +27,7 @@ import numpy as np
 # ----------------------------
 # Simulation settings
 # ----------------------------
-seedi = 42 ##1
+seedi = 42 ##1 #42
 seed(seedi)  # for reproducibility
 rng = np.random.default_rng(seedi)
 
