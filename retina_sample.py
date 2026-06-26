@@ -247,7 +247,7 @@ def plot_nonlinearity(M, eps=1e-12):
 def main():
     mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
 
-    dataset = 2
+    dataset = 1
     nids = np.array([3, 34, 13])
 
     dt = 1.0
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     sorted_ids = np.argsort(firing_rates)[::-1]
     print(f"Sorted IDs: {sorted_ids}")
         
-    # %%
+    # %% hand chose examples (old triplet, low, and high firing picka)
     # fix two and loop the third
     nids = np.array([3, 34, 13])
     fix_id = np.array([34, 13]) ### old choice
@@ -348,8 +348,7 @@ if __name__ == "__main__":
         full_labels, full_ws = infer_triplet_couplings(M)
         # cg_labels, cg_ws = infer_coarse_grained_couplings(tau_all, C_all)
         w12s.append(full_ws)
-    # %%
-    ### plotting - show distribution of 6 coupling strengths
+    # %% plotting - show distribution of 6 coupling strengths
     w12s_array = np.array(w12s)
     coupling_names = ['w12', 'w13', 'w21', 'w23', 'w32', 'w31']
     
@@ -365,3 +364,64 @@ if __name__ == "__main__":
     
     plt.tight_layout()
     plt.show()
+    
+# %% plot g_ij with error bar
+###############################################################################
+###############################################################################
+# %% iterate pairs in triplet
+nids = np.array([3, 34, 13])
+pair = np.array([nids[0], nids[1]])
+
+list_of_ID = np.unique(np.hstack(spk_ids)[0])
+list_of_ID = list_of_ID[sorted_ids]
+
+possible_third_neurons = [i for i in list_of_ID if i not in pair]
+
+w_samples = []
+for ii in possible_third_neurons:
+    nids = np.append(pair, ii)
+    print(f"Testing pair {pair} with third neuron: {ii}, out of {len(possible_third_neurons)}")
+
+    firing_s, lt = build_firing_trials(
+        spk_data=spk_data,
+        spk_ids=spk_ids,
+        nids=nids,
+        dt=dt,
+        T=T,
+    )
+
+    tau_all, C_all, states_all, times_all = aggregate_tauC(
+        firing_s=firing_s,
+        window=window,
+        lt=lt,
+    )
+
+    total_time = np.sum(tau_all)
+    tau_norm = tau_all / total_time
+    C_norm = C_all / total_time
+
+    M = infer_M(C_norm, tau_norm)
+    full_labels, full_ws = infer_triplet_couplings(M)
+    w_samples.append(full_ws)
+
+pair_weights = np.asarray(w_samples)
+pair_third_ids = np.asarray(possible_third_neurons)
+
+
+# %%
+### plotting - one bar plot with six weights
+coupling_names = ['w12', 'w13', 'w21', 'w23', 'w32', 'w31']
+all_w_samples = pair_weights
+
+means = np.mean(all_w_samples, axis=0)
+stds = np.std(all_w_samples, axis=0)/np.sqrt(len(possible_third_neurons))
+x = np.arange(len(coupling_names))
+
+plt.figure(figsize=(10, 5))
+plt.bar(x, means, yerr=stds, capsize=4, alpha=0.85)
+plt.xticks(x, coupling_names)
+plt.ylabel('inferred weight')
+plt.axhline(0, color='k', linewidth=0.5)
+plt.grid(True, alpha=0.3, axis='y')
+plt.tight_layout()
+plt.show()

@@ -24,7 +24,7 @@ matplotlib.rc('ytick', labelsize=20)
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
 dataset = 1  # 0-natural, 1-Brownian, 2-repeats
-nid = 3  # neuron example
+nid = 34  # neuron example
 reps = 62 #len(mat_data['spike_times'][0][dataset][0])  #62, 50
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
 spk_ids = mat_data['cell_IDs'][0][dataset][0]  # extract cell ID
@@ -49,8 +49,9 @@ nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three 
 # nids = np.array([50, 31, 13]) ###
 ### array([21,  2, 27], dtype=uint8)
 
-nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
+nids = np.array([1, 34, 13])  #3,34,13  # for figure 7
 # nids = np.array([40,1,31])   # for SI plot
+# nids = np.array([1,42,34]) ### testing
 
 # %% plot three neuron for Peter
 trial_id = 0  
@@ -95,7 +96,7 @@ dt = 1 #.1
 lt = int(10000/dt) #int(max_lt/dt)
 firing_s = []  # across repeats!
 
-for dd in range(2,3):   #### try all data!!
+for dd in range(1,2):   #### try all data!!
     spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
     spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
     
