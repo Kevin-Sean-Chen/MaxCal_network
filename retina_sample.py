@@ -44,28 +44,43 @@ def count_spikes_by_cell(spk_ids):
     return all_ids[order], counts[order]
 
 
-def build_firing_trials(spk_data, spk_ids, nids, dt=1.0, T=10000):
+def build_firing_trials(spk_data, spk_ids, nids, dt=1.0):
+    """
+    Build firing_s for all repeats.
+    Each repeat can have its own length.
+
+    Returns
+    -------
+    firing_s : list
+        firing_s[rr][tt] = [tt, spike_indices] or [empty, empty]
+    lts : array
+        length of each repeat in bins
+    """
     N = len(nids)
-    lt = int(T / dt)
     firing_s = []
+    lts = []
 
     for rr in range(len(spk_data)):
         spkt = spk_data[rr].squeeze()
         spki = spk_ids[rr].squeeze()
+
+        if len(spkt) == 0:
+            continue
+
+        lt_trial = int(np.ceil(np.max(spkt) / dt))
+        lts.append(lt_trial)
 
         spikes_by_bin = {}
 
         for nn in range(N):
             spks = spkt[spki == nids[nn]]
 
-            bins = np.floor(spks / dt).astype(int)
-
-            # match your original condition:
-            # spks > tt*dt and spks <= tt*dt + dt
-            # means spike exactly at t=dt goes to bin 0
+            # same convention:
+            # (0, dt] -> bin 0
+            # (dt, 2dt] -> bin 1
             bins = np.ceil(spks / dt).astype(int) - 1
 
-            valid = (bins >= 0) & (bins < lt)
+            valid = (bins >= 0) & (bins < lt_trial)
             bins = bins[valid]
 
             for b in bins:
@@ -74,9 +89,7 @@ def build_firing_trials(spk_data, spk_ids, nids, dt=1.0, T=10000):
                 spikes_by_bin[b].append(nn)
 
         firing = []
-        firing.append((np.array([]), np.array([])))
-
-        for tt in range(lt):
+        for tt in range(lt_trial):
             if tt in spikes_by_bin:
                 spike_indices = np.asarray(spikes_by_bin[tt], dtype=int)
                 firing.append([tt, spike_indices])
@@ -85,18 +98,22 @@ def build_firing_trials(spk_data, spk_ids, nids, dt=1.0, T=10000):
 
         firing_s.append(firing)
 
-    return firing_s, lt
+    return firing_s, np.asarray(lts)
 
-
-def aggregate_tauC(firing_s, window, lt):
+def aggregate_tauC(firing_s, window, lts):
+    """
+    Aggregate tau and C across repeats with different lengths.
+    """
     tau_all = None
     C_all = None
     states_all = []
     times_all = []
 
-    for firing in firing_s:
-        states, times = spk2statetime(firing, window, lt=lt)
-        tau, C = compute_tauC(states, times, lt=lt)
+    for rr, firing in enumerate(firing_s):
+        lt_trial = int(lts[rr])
+
+        states, times = spk2statetime(firing, window, lt=lt_trial)
+        tau, C = compute_tauC(states, times, lt=lt_trial)
 
         states_all.append(states)
         times_all.append(times)
@@ -293,69 +310,78 @@ if __name__ == "__main__":
     # main()
     
     # ##### sampling test #####
-    # same data and param setup
+    # ##### sampling test #####
     mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
-    dataset = 2
+    dataset = 1
     dt = 1.0
-    T = 10000
-    window_ms = 20  ### 80,20
+    window_ms = 20
     window = int(window_ms / dt)
+    
     spk_data, spk_ids = load_dataset(mat_path, dataset)
     
-    # %%
-    # sort by firing rate, from output of count_spikes_by_cell
-    firing_rates,_ = count_spikes_by_cell(spk_ids)
-    sorted_ids = np.argsort(firing_rates)[::-1]
-    print(f"Sorted IDs: {sorted_ids}")
-        
-    # %% hand chose examples (old triplet, low, and high firing picka)
+    # Correct sorting by firing rate
+    sorted_cell_ids, sorted_counts = count_spikes_by_cell(spk_ids)
+    list_of_ID = sorted_cell_ids
+    print(f"Sorted IDs: {list_of_ID}")
+    
+    # %% iterations
     # fix two and loop the third
-    nids = np.array([3, 34, 13])
-    fix_id = np.array([34, 13]) ### old choice
-    fix_id = np.array([25,44])  ### highest rate
-    # fix_id = np.array([2, 4]) ### lowest rate
-    ### list of possible third neurons to test, from the dataset (1 to the largest ID, excluding the fixed ones)
-    list_of_ID = np.unique(np.hstack(spk_ids)[0]) ### unsorted
-    list_of_ID = list_of_ID[sorted_ids] ### sorted
+    # fix_id = np.array([25, 44])  # highest rate
+    fix_id = np.array([34, 13])  # old choice
+    # fix_id = np.array([2, 4])    # low rate
+    
     possible_third_neurons = [i for i in list_of_ID if i not in fix_id]
-
-    # loop and record variables
-    w12s = []
+    
+    w_samples = []
+    third_ids_used = []
+    
     for ii in possible_third_neurons:
-        ### append the third neuron to the fixed ones
         nids = np.append(fix_id, ii)
         print(f"Testing third neuron: {ii}, out of {len(possible_third_neurons)}")
-        ### making firing
-        firing_s, lt = build_firing_trials(
+    
+        firing_s, lts = build_firing_trials(
             spk_data=spk_data,
             spk_ids=spk_ids,
             nids=nids,
             dt=dt,
-            T=T,
         )
-        ### making tau and C
+    
         tau_all, C_all, states_all, times_all = aggregate_tauC(
             firing_s=firing_s,
+            lts=lts,
             window=window,
-            lt=lt,
         )
-        ### norm them
-        total_time = np.sum(tau_all)
-        tau_norm = tau_all / total_time
-        C_norm = C_all / total_time
-        ### get M and do inference
-        M = infer_M(C_norm, tau_norm)
-        full_labels, full_ws = infer_triplet_couplings(M)
-        # cg_labels, cg_ws = infer_coarse_grained_couplings(tau_all, C_all)
-        w12s.append(full_ws)
-    # %% plotting - show distribution of 6 coupling strengths
-    w12s_array = np.array(w12s)
-    coupling_names = ['w12', 'w13', 'w21', 'w23', 'w32', 'w31']
     
+        if np.sum(tau_all) == 0:
+            continue
+    
+        tau_norm = tau_all / np.sum(tau_all)
+        C_norm = C_all / np.sum(tau_all)
+    
+        M = infer_M(C_norm, tau_norm)
+    
+        # Full conditional triplet weights
+        full_labels, full_ws = infer_triplet_couplings(M)
+    
+        # Coarse-grained effective pairwise weights
+        cg_labels, cg_ws = infer_coarse_grained_couplings(tau_all, C_all)
+    
+        # choose which one to store
+        # w_samples.append(full_ws)
+        w_samples.append(cg_ws)
+    
+        third_ids_used.append(ii)
+    
+    w_samples = np.asarray(w_samples)
+    third_ids_used = np.asarray(third_ids_used)
+    
+    # %% plotting
+    coupling_names = cg_labels  # or full_labels if using full_ws
+
     plt.figure(figsize=(14, 10))
     for idx, name in enumerate(coupling_names):
         plt.subplot(3, 2, idx + 1)
-        plt.plot(possible_third_neurons, w12s_array[:, idx], 'o')
+        plt.plot(third_ids_used, w_samples[:, idx], 'o')
         plt.xlabel('Third Neuron ID', fontsize=14)
         plt.ylabel('Coupling Strength', fontsize=14)
         plt.title(name, fontsize=14)
@@ -365,63 +391,15 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
     
-# %% plot g_ij with error bar
-###############################################################################
-###############################################################################
-# %% iterate pairs in triplet
-nids = np.array([3, 34, 13])
-pair = np.array([nids[0], nids[1]])
-
-list_of_ID = np.unique(np.hstack(spk_ids)[0])
-list_of_ID = list_of_ID[sorted_ids]
-
-possible_third_neurons = [i for i in list_of_ID if i not in pair]
-
-w_samples = []
-for ii in possible_third_neurons:
-    nids = np.append(pair, ii)
-    print(f"Testing pair {pair} with third neuron: {ii}, out of {len(possible_third_neurons)}")
-
-    firing_s, lt = build_firing_trials(
-        spk_data=spk_data,
-        spk_ids=spk_ids,
-        nids=nids,
-        dt=dt,
-        T=T,
-    )
-
-    tau_all, C_all, states_all, times_all = aggregate_tauC(
-        firing_s=firing_s,
-        window=window,
-        lt=lt,
-    )
-
-    total_time = np.sum(tau_all)
-    tau_norm = tau_all / total_time
-    C_norm = C_all / total_time
-
-    M = infer_M(C_norm, tau_norm)
-    full_labels, full_ws = infer_triplet_couplings(M)
-    w_samples.append(full_ws)
-
-pair_weights = np.asarray(w_samples)
-pair_third_ids = np.asarray(possible_third_neurons)
-
-
-# %%
-### plotting - one bar plot with six weights
-coupling_names = ['w12', 'w13', 'w21', 'w23', 'w32', 'w31']
-all_w_samples = pair_weights
-
-means = np.mean(all_w_samples, axis=0)
-stds = np.std(all_w_samples, axis=0)/np.sqrt(len(possible_third_neurons))
-x = np.arange(len(coupling_names))
-
-plt.figure(figsize=(10, 5))
-plt.bar(x, means, yerr=stds, capsize=4, alpha=0.85)
-plt.xticks(x, coupling_names)
-plt.ylabel('inferred weight')
-plt.axhline(0, color='k', linewidth=0.5)
-plt.grid(True, alpha=0.3, axis='y')
-plt.tight_layout()
-plt.show()
+    means = np.nanmean(w_samples, axis=0)
+    sems = np.nanstd(w_samples, axis=0) / np.sqrt(w_samples.shape[0])
+    x = np.arange(len(coupling_names))
+    
+    plt.figure(figsize=(10, 5))
+    plt.bar(x, means, yerr=sems, capsize=4, alpha=0.85)
+    plt.xticks(x, coupling_names)
+    plt.ylabel('coarse-grained weight')
+    plt.axhline(0, color='k', linewidth=0.5)
+    plt.grid(True, alpha=0.3, axis='y')
+    plt.tight_layout()
+    plt.show()

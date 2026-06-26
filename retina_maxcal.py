@@ -49,7 +49,7 @@ nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three 
 # nids = np.array([50, 31, 13]) ###
 ### array([21,  2, 27], dtype=uint8)
 
-nids = np.array([1, 34, 13])  #3,34,13  # for figure 7
+nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
 # nids = np.array([40,1,31])   # for SI plot
 # nids = np.array([1,42,34]) ### testing
 
@@ -94,6 +94,7 @@ print(max_lt)
 # %% loop across trial and time and neurons
 dt = 1 #.1
 lt = int(10000/dt) #int(max_lt/dt)
+lts = []  ### store different length!
 firing_s = []  # across repeats!
 
 for dd in range(1,2):   #### try all data!!
@@ -102,23 +103,29 @@ for dd in range(1,2):   #### try all data!!
     
     
     for rr in range(reps):  # repeats
+        print('repeat#: ', rr)
         firing = []
         firing.append((np.array([]), np.array([])))
         
-        for tt in range(lt):  # time
-            spike_indices = np.array([])
+        if len(mat_data['spike_times'][0][dd][0][rr][0])>0: ### trial exists
+            maaxt = int(np.ceil(np.max(mat_data['spike_times'][0][dd][0][rr][0])))
+            lts.append(maaxt)
             
-            for nn in range(N):  # neurons
-                spkt = spk_data[rr].squeeze()
-                spki = spk_ids[rr].squeeze()
-                pos = np.where(spki==nids[nn])[0]
-                spks = spkt[pos]
-                find_spk = np.where((spks > tt*dt) & (spks <= tt*dt+dt))[0]
-                if len(find_spk)!=0:
-                    spike_indices = np.append(spike_indices, int(nn))
-            firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
-    
-        firing_s.append(firing)
+            for tt in range(maaxt):  # time
+                
+                spike_indices = np.array([])
+                
+                for nn in range(N):  # neurons
+                    spkt = spk_data[rr].squeeze()
+                    spki = spk_ids[rr].squeeze()
+                    pos = np.where(spki==nids[nn])[0]
+                    spks = spkt[pos]
+                    find_spk = np.where((spks > tt*dt) & (spks <= tt*dt+dt))[0]
+                    if len(find_spk)!=0:
+                        spike_indices = np.append(spike_indices, int(nn))
+                firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
+        
+            firing_s.append(firing)
 
 # %% checking raster
 # plt.figure()
@@ -129,18 +136,19 @@ for dd in range(1,2):   #### try all data!!
         
 # %% some tests!!
 window = int(20/dt)  # .1ms window
+trial_id = 0
 spk_state_all = []
 spk_time_all = []
-spk_states, spk_times = spk2statetime(firing_s[0], window, lt=lt)
-tau_all, C_all = compute_tauC(spk_states, spk_times, lt=lt)
+spk_states, spk_times = spk2statetime(firing_s[trial_id], window, lt=lts[trial_id])
+tau_all, C_all = compute_tauC(spk_states, spk_times, lt=lts[trial_id])
 # (states, times, nc=nc, combinations=combinations, lt=None)
 
 for rr in range(1, len(firing_s)):
-    spk_states, spk_times = spk2statetime(firing_s[rr], window, lt=lt)  # embedding states
+    spk_states, spk_times = spk2statetime(firing_s[rr], window, lt=lts[rr], stride=20)  # embedding states, testing time shift
     spk_state_all.append(spk_states)
     spk_time_all.append(spk_times)
     
-    tau,C = compute_tauC(spk_states, spk_times, lt=lt)
+    tau,C = compute_tauC(spk_states, spk_times, lt=lts[rr])
     tau_all += tau
     C_all += C
 
