@@ -91,29 +91,81 @@ def constraint_blocks_3N(ith):
     
 
 # %%
-def spk2statetime(firing, window, lt=lt, N=N, combinations=combinations):
+def spk2statetime(
+    firing,
+    window,
+    lt,
+    N=N,
+    combinations=combinations,
+    stride=1,
+):
     """
-    given the firing (time and neuron that fired) data, we choose time window to slide through,
-    then convert to network states and the timing of transition
+    Convert firing data into network states.
+
+    Parameters
+    ----------
+    firing : list
+        firing[t] = [time, spike_indices]
+    window : int
+        Window size in bins, e.g. 20 for 20 ms if dt=1 ms.
+    lt : int
+        Trial length in bins.
+    stride : int
+        Step size between windows.
+        stride=1 gives sliding windows. default for CTMC
+        stride=window gives non-overlapping windows.
     """
-    states_spk = np.zeros(lt-window)
-    for tt in range(lt-window):
-        this_window = firing[tt:tt+window]
-        word = np.zeros(N)  # template for the binary word
-        for ti in range(window): # in time
-            if len(this_window[ti][1])>0:
-                # this_neuron = this_window[ti][1][0]  # the neuron that fired first
+
+    starts = np.arange(0, lt - window + 1, stride)
+    states_spk = np.zeros(len(starts), dtype=int)
+
+    for ii, tt in enumerate(starts):
+        this_window = firing[tt:tt + window]
+        word = np.zeros(N)
+
+        for ti in range(window):
+            if len(this_window[ti][1]) > 0:
                 this_neuron = np.random.choice(this_window[ti][1])
-                if this_neuron<N:  # for only oberved!
+                if this_neuron < N:
                     word[int(this_neuron)] = 1
+
         state_id = combinations.index(tuple(word))
-        states_spk[tt] = state_id
-    
-    # now compute all the transitions
-    trans_temp = np.diff(states_spk)  # find transitions
-    spk_times = np.where(np.abs(trans_temp)>0)[0]  # spike timing
-    spk_states = states_spk[spk_times].astype(int)   # spiking states
+        states_spk[ii] = state_id
+
+    # transitions between consecutive sampled states
+    trans_temp = np.diff(states_spk)
+    trans_idx = np.where(np.abs(trans_temp) > 0)[0]
+
+    spk_states = states_spk[trans_idx].astype(int)
+
+    # return transition times in original bin units
+    spk_times = starts[trans_idx]
+
     return spk_states, spk_times
+
+# def spk2statetime(firing, window, lt=lt, N=N, combinations=combinations):
+#     """
+#     given the firing (time and neuron that fired) data, we choose time window to slide through,
+#     then convert to network states and the timing of transition
+#     """
+#     states_spk = np.zeros(lt-window)
+#     for tt in range(lt-window):
+#         this_window = firing[tt:tt+window]
+#         word = np.zeros(N)  # template for the binary word
+#         for ti in range(window): # in time
+#             if len(this_window[ti][1])>0:
+#                 # this_neuron = this_window[ti][1][0]  # the neuron that fired first
+#                 this_neuron = np.random.choice(this_window[ti][1])
+#                 if this_neuron<N:  # for only oberved!
+#                     word[int(this_neuron)] = 1
+#         state_id = combinations.index(tuple(word))
+#         states_spk[tt] = state_id
+    
+#     # now compute all the transitions
+#     trans_temp = np.diff(states_spk)  # find transitions
+#     spk_times = np.where(np.abs(trans_temp)>0)[0]  # spike timing
+#     spk_states = states_spk[spk_times].astype(int)   # spiking states
+#     return spk_states, spk_times
 
 def spk2statetime_4N(firing, window, lt=lt):
     """
