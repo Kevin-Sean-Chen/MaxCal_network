@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 # %% loading retina
 mat_path = 'C:/Users/kevin/Downloads/Data_processed.mat'
-dataset = 2  # 0-natural, 1-Brownian, 2-repeats
+dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 
 mat_data = scipy.io.loadmat(mat_path)
 spk_data = mat_data['spike_times'][0][dataset][0]
@@ -156,8 +156,8 @@ def spike_xcorr_across_repeats(
 
 
 # %% run x-corr
-nid1 = 34
-nid2 = 3
+nid1 = 3
+nid2 = 34
 
 bin_size = 20
 maxlag = 10  # +/-10 bins = +/-200 ms

@@ -10,18 +10,27 @@ Created on Sun Jun 21 01:16:58 2026
 # but here we have samples of the third neuron
 #############################################################
 
+# -*- coding: utf-8 -*-
 import itertools
 import numpy as np
 import scipy.io
 import matplotlib.pyplot as plt
-import matplotlib 
-matplotlib.rc('xtick', labelsize=20) 
-matplotlib.rc('ytick', labelsize=20)
+import matplotlib
+import pickle
 
+matplotlib.rc('xtick', labelsize=20)
+matplotlib.rc('ytick', labelsize=20)
 
 from maxcal_functions import spk2statetime, compute_tauC, word_id
 
-# %% clean functions, modified from retina_maxcal.py, to scale up for triplet sampling
+
+# %% setup
+N = 3
+spins = [0, 1]
+combinations = list(itertools.product(spins, repeat=N))
+
+
+# %% functions
 def load_dataset(mat_path, dataset):
     mat_data = scipy.io.loadmat(mat_path)
     spk_data = mat_data["spike_times"][0][dataset][0]
@@ -41,6 +50,7 @@ def count_spikes_by_cell(spk_ids):
 
     counts = np.asarray(counts)
     order = np.argsort(counts)[::-1]
+
     return all_ids[order], counts[order]
 
 
@@ -49,13 +59,12 @@ def build_firing_trials(spk_data, spk_ids, nids, dt=1.0):
     Build firing_s for all repeats.
     Each repeat can have its own length.
 
-    Returns
-    -------
-    firing_s : list
-        firing_s[rr][tt] = [tt, spike_indices] or [empty, empty]
-    lts : array
-        length of each repeat in bins
+    Local neuron identities:
+        local neuron 1 = nids[0]
+        local neuron 2 = nids[1]
+        local neuron 3 = nids[2]
     """
+
     N = len(nids)
     firing_s = []
     lts = []
@@ -75,11 +84,8 @@ def build_firing_trials(spk_data, spk_ids, nids, dt=1.0):
         for nn in range(N):
             spks = spkt[spki == nids[nn]]
 
-            # same convention:
-            # (0, dt] -> bin 0
-            # (dt, 2dt] -> bin 1
+            # convention: (0, dt] -> bin 0, (dt, 2dt] -> bin 1
             bins = np.ceil(spks / dt).astype(int) - 1
-
             valid = (bins >= 0) & (bins < lt_trial)
             bins = bins[valid]
 
@@ -100,10 +106,12 @@ def build_firing_trials(spk_data, spk_ids, nids, dt=1.0):
 
     return firing_s, np.asarray(lts)
 
+
 def aggregate_tauC(firing_s, window, lts):
     """
     Aggregate tau and C across repeats with different lengths.
     """
+
     tau_all = None
     C_all = None
     states_all = []
@@ -128,38 +136,6 @@ def aggregate_tauC(firing_s, window, lts):
     return tau_all, C_all, states_all, times_all
 
 
-def infer_M(C, tau, eps=1e-12):
-    """
-    Empirical CTMC transition matrix estimate.
-    """
-    return C / np.maximum(tau[:, None], eps)
-
-
-def infer_triplet_couplings(M, eps=1e-12):
-    """
-    For state ordering:
-    000=0, 001=1, 010=2, 011=3,
-    100=4, 101=5, 110=6, 111=7
-    """
-    M = np.maximum(M, eps)
-
-    f1 = M[0, 4]
-    f2 = M[0, 2]
-    f3 = M[0, 1]
-
-    w12 = np.log(M[4, 6] / f2)
-    w13 = np.log(M[4, 5] / f3)
-    w21 = np.log(M[2, 6] / f1)
-    w23 = np.log(M[2, 3] / f3)
-    w32 = np.log(M[1, 3] / f2)
-    w31 = np.log(M[1, 5] / f1)
-
-    labels = ["w12", "w13", "w21", "w23", "w32", "w31"]
-    ws = np.array([w12, w13, w21, w23, w32, w31])
-
-    return labels, ws
-
-
 def make_bin(indices, N=3):
     x = [0] * N
     for idx in indices:
@@ -171,10 +147,18 @@ def coarse_grain_tauC(ijk, tau, C, eps=1e-12):
     """
     Estimate effective i -> j coupling while marginalizing over k.
 
-    ijk uses 1-based neuron labels.
-    """
-    j, i, k = ijk
+    ijk uses local 1-based labels.
+    Example:
+        if nids = [3, 34, sampled],
+        then local 1 = ID 3,
+             local 2 = ID 34,
+             local 3 = sampled.
 
+        coarse_grain_tauC((1,2,3), tau, C) gives 1 -> 2.
+        coarse_grain_tauC((2,1,3), tau, C) gives 2 -> 1.
+    """
+
+    j, i, k = ijk
     gnd = (0, 0, 0)
 
     f = (
@@ -196,210 +180,213 @@ def coarse_grain_tauC(ijk, tau, C, eps=1e-12):
     return np.log(np.maximum(fexpw, eps) / np.maximum(f, eps))
 
 
-def infer_coarse_grained_couplings(tau, C):
-    labels = ["cg12", "cg13", "cg21", "cg23", "cg32", "cg31"]
+def infer_cg12_cg21(tau, C):
+    """
+    For nids = [A, B, sampled],
+    return:
+        cg12 = A -> B
+        cg21 = B -> A
+    """
 
-    ws = np.array([
-        coarse_grain_tauC((1, 2, 3), tau, C),
-        coarse_grain_tauC((1, 3, 2), tau, C),
-        coarse_grain_tauC((2, 1, 3), tau, C),
-        coarse_grain_tauC((2, 3, 1), tau, C),
-        coarse_grain_tauC((3, 2, 1), tau, C),
-        coarse_grain_tauC((3, 1, 2), tau, C),
-    ])
+    cg12 = coarse_grain_tauC((1, 2, 3), tau, C)
+    cg21 = coarse_grain_tauC((2, 1, 3), tau, C)
 
-    return labels, ws
-
-
-def plot_couplings(full_labels, full_ws, cg_labels, cg_ws):
-    plt.figure(figsize=(7, 6))
-
-    plt.subplot(2, 1, 1)
-    plt.bar(full_labels, full_ws)
-    plt.axhline(0, color="k", linewidth=1)
-    plt.ylabel("inferred")
-
-    plt.subplot(2, 1, 2)
-    plt.bar(cg_labels, cg_ws)
-    plt.axhline(0, color="k", linewidth=1)
-    plt.ylabel("coarse-grained")
-
-    plt.tight_layout()
-    plt.show()
+    return cg12, cg21
 
 
-def plot_nonlinearity(M, eps=1e-12):
-    M = np.maximum(M, eps)
+# %% main analysis
+mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
+dataset = 1
 
-    f1, f2, f3 = M[0, 4], M[0, 2], M[0, 1]
+dt = 1.0
+window_ms = 20 ### 20,  40,80
+window = int(window_ms / dt)
 
-    w12 = np.log(M[4, 6] / f2)
-    w13 = np.log(M[4, 5] / f3)
-    w21 = np.log(M[2, 6] / f1)
-    w23 = np.log(M[2, 3] / f3)
-    w32 = np.log(M[1, 3] / f2)
-    w31 = np.log(M[1, 5] / f1)
+spk_data, spk_ids = load_dataset(mat_path, dataset)
 
-    plt.figure(figsize=(6, 5))
+# Fixed biological identity:
+# neuron 1 = ID 3
+# neuron 2 = ID 34
+# neuron 3 = ID 13
+base_triplet = np.array([3, 34, 13])
 
-    ws = np.array([0, w21, w31, w21 + w31])
-    phis = np.array([f1, M[2, 6], M[1, 5], M[3, 7]])
-    plt.semilogy(ws, phis, "o", label="neuron 1")
+sorted_cell_ids, sorted_counts = count_spikes_by_cell(spk_ids)
+list_of_ID = sorted_cell_ids
 
-    ws = np.array([0, w12, w32, w12 + w32])
-    phis = np.array([f2, M[4, 6], M[1, 3], M[5, 7]])
-    plt.semilogy(ws, phis, "o", label="neuron 2")
-
-    ws = np.array([0, w13, w23, w13 + w23])
-    phis = np.array([f3, M[4, 5], M[2, 3], M[6, 7]])
-    plt.semilogy(ws, phis, "o", label="neuron 3")
-
-    plt.xlabel("input x")
-    plt.ylabel("transition rate phi")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+print("Base triplet:")
+print("neuron 1 = ID", base_triplet[0])
+print("neuron 2 = ID", base_triplet[1])
+print("neuron 3 = ID", base_triplet[2])
 
 
-def main():
-    mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
+# %% pair definitions
+# Each pair is [first neuron, second neuron].
+# For each pair, we iterate the sampled third neuron.
+# cg12 gives first -> second.
+# cg21 gives second -> first.
 
-    dataset = 1
-    nids = np.array([3, 34, 13])
-
-    dt = 1.0
-    T = 10000
-    window_ms = 20
-    window = int(window_ms / dt)
-
-    spk_data, spk_ids = load_dataset(mat_path, dataset)
-
-    firing_s, lt = build_firing_trials(
-        spk_data=spk_data,
-        spk_ids=spk_ids,
-        nids=nids,
-        dt=dt,
-        T=T,
-    )
-
-    tau_all, C_all, states_all, times_all = aggregate_tauC(
-        firing_s=firing_s,
-        window=window,
-        lt=lt,
-    )
-
-    total_time = np.sum(tau_all)
-    tau_norm = tau_all / total_time
-    C_norm = C_all / total_time
-
-    M = infer_M(C_norm, tau_norm)
-
-    full_labels, full_ws = infer_triplet_couplings(M)
-    cg_labels, cg_ws = infer_coarse_grained_couplings(tau_all, C_all)
-
-    print("Triplet:", nids)
-    print(dict(zip(full_labels, full_ws)))
-    print(dict(zip(cg_labels, cg_ws)))
-
-    plot_couplings(full_labels, full_ws, cg_labels, cg_ws)
-    plot_nonlinearity(M)
+pair_jobs = [
+    {
+        "pair": np.array([base_triplet[0], base_triplet[1]]),
+        "forward_label": "w12",
+        "reverse_label": "w21",
+    },
+    {
+        "pair": np.array([base_triplet[0], base_triplet[2]]),
+        "forward_label": "w13",
+        "reverse_label": "w31",
+    },
+    {
+        "pair": np.array([base_triplet[1], base_triplet[2]]),
+        "forward_label": "w23",
+        "reverse_label": "w32",
+    },
+]
 
 
-if __name__ == "__main__":
-    ### for origna result
-    # main()
+# %% sample over third neurons
+all_samples = {
+    "w12": [],
+    "w21": [],
+    "w13": [],
+    "w31": [],
+    "w23": [],
+    "w32": [],
+}
+
+all_third_ids = {
+    "w12": [],
+    "w21": [],
+    "w13": [],
+    "w31": [],
+    "w23": [],
+    "w32": [],
+}
+
+for job in pair_jobs:
+    pair = job["pair"]
+    forward_label = job["forward_label"]
+    reverse_label = job["reverse_label"]
     
-    # ##### sampling test #####
-    # ##### sampling test #####
-    mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
-    dataset = 1
-    dt = 1.0
-    window_ms = 20
-    window = int(window_ms / dt)
-    
-    spk_data, spk_ids = load_dataset(mat_path, dataset)
-    
-    # Correct sorting by firing rate
-    sorted_cell_ids, sorted_counts = count_spikes_by_cell(spk_ids)
-    list_of_ID = sorted_cell_ids
-    print(f"Sorted IDs: {list_of_ID}")
-    
-    # %% iterations
-    # fix two and loop the third
-    # fix_id = np.array([25, 44])  # highest rate
-    fix_id = np.array([34, 13])  # old choice
-    # fix_id = np.array([2, 4])    # low rate
-    
-    possible_third_neurons = [i for i in list_of_ID if i not in fix_id]
-    
-    w_samples = []
-    third_ids_used = []
-    
-    for ii in possible_third_neurons:
-        nids = np.append(fix_id, ii)
-        print(f"Testing third neuron: {ii}, out of {len(possible_third_neurons)}")
-    
+    ### top K selection, to speed up #####
+    K = 7  ### -1 for all
+    possible_third_neurons = [nid for nid in list_of_ID if nid not in pair][:K]
+
+    print("\nSampling pair:", pair)
+    print("Forward:", forward_label, "Reverse:", reverse_label)
+    print("Number of sampled third neurons:", len(possible_third_neurons))
+
+    for third_id in possible_third_neurons:
+        # local neuron 1 = pair[0]
+        # local neuron 2 = pair[1]
+        # local neuron 3 = sampled third neuron
+        nids = np.array([pair[0], pair[1], third_id])
+
+        print(f"  third neuron = {third_id}")
+
         firing_s, lts = build_firing_trials(
             spk_data=spk_data,
             spk_ids=spk_ids,
             nids=nids,
             dt=dt,
         )
-    
+
         tau_all, C_all, states_all, times_all = aggregate_tauC(
             firing_s=firing_s,
-            lts=lts,
             window=window,
+            lts=lts,
         )
-    
-        if np.sum(tau_all) == 0:
-            continue
-    
-        tau_norm = tau_all / np.sum(tau_all)
-        C_norm = C_all / np.sum(tau_all)
-    
-        M = infer_M(C_norm, tau_norm)
-    
-        # Full conditional triplet weights
-        full_labels, full_ws = infer_triplet_couplings(M)
-    
-        # Coarse-grained effective pairwise weights
-        cg_labels, cg_ws = infer_coarse_grained_couplings(tau_all, C_all)
-    
-        # choose which one to store
-        # w_samples.append(full_ws)
-        w_samples.append(cg_ws)
-    
-        third_ids_used.append(ii)
-    
-    w_samples = np.asarray(w_samples)
-    third_ids_used = np.asarray(third_ids_used)
-    
-    # %% plotting
-    coupling_names = cg_labels  # or full_labels if using full_ws
 
-    plt.figure(figsize=(14, 10))
-    for idx, name in enumerate(coupling_names):
-        plt.subplot(3, 2, idx + 1)
-        plt.plot(third_ids_used, w_samples[:, idx], 'o')
-        plt.xlabel('Third Neuron ID', fontsize=14)
-        plt.ylabel('Coupling Strength', fontsize=14)
-        plt.title(name, fontsize=14)
-        plt.axhline(0, color='k', linewidth=0.5)
-        plt.grid(True, alpha=0.3)
+        if tau_all is None or np.sum(tau_all) == 0:
+            continue
+
+        cg12, cg21 = infer_cg12_cg21(tau_all, C_all)
+
+        # Store forward and reverse effects for this fixed pair
+        all_samples[forward_label].append(cg12)
+        all_samples[reverse_label].append(cg21)
+
+        all_third_ids[forward_label].append(third_id)
+        all_third_ids[reverse_label].append(third_id)
+
+# %% if we just load pkl
+save = False
+if save==True:
+    with open("retina_triplet_sampling.pkl", "rb") as f:
+        data = pickle.load(f)
     
-    plt.tight_layout()
-    plt.show()
+    all_samples   = data["all_samples"]
+    all_third_ids = data["all_third_ids"]
+    base_triplet  = data["base_triplet"]
+    window_ms     = data["window_ms"]
+    dataset       = data["dataset"]
+    dt            = data["dt"]
     
-    means = np.nanmean(w_samples, axis=0)
-    sems = np.nanstd(w_samples, axis=0) / np.sqrt(w_samples.shape[0])
-    x = np.arange(len(coupling_names))
+    print("Loaded retina_triplet_sampling.pkl")
+
+# %% convert to arrays
+for key in all_samples:
+    all_samples[key] = np.asarray(all_samples[key], dtype=float)
+    all_third_ids[key] = np.asarray(all_third_ids[key])
+
+
+# %% MAIN PLOT: six wij bars with error bars over sampled third neurons
+
+wij_order = ["w12", "w13", "w21", "w23", "w32", "w31"]
+
+means = np.array([np.nanmean(all_samples[k]) for k in wij_order])
+sems = np.array([
+    np.nanstd(all_samples[k]) / np.sqrt(len(all_samples[k]))
+    for k in wij_order
+])
+
+x = np.arange(len(wij_order))
+
+plt.figure(figsize=(8, 5))
+plt.bar(x, means, yerr=sems, capsize=4, alpha=0.85)
+plt.xticks(x, wij_order, fontsize=14)
+plt.ylabel("coarse-grained weight", fontsize=16)
+plt.axhline(0, color="k", linewidth=0.8)
+plt.grid(True, alpha=0.3, axis="y")
+plt.tight_layout()
+plt.show()
+
+
+# %% DEBUG PLOT: raw samples across third neurons
+
+plt.figure(figsize=(12, 8))
+
+for idx, key in enumerate(wij_order):
+    plt.subplot(3, 2, idx + 1)
+    plt.plot(all_third_ids[key], all_samples[key], "o", alpha=0.8)
+    plt.axhline(0, color="k", linewidth=0.5)
+    plt.xlabel("sampled third neuron ID", fontsize=11)
+    plt.ylabel("weight", fontsize=11)
+    plt.title(key, fontsize=14)
+    plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# %% print summary
+print("\nFinal wij summary: mean ± SEM")
+for key, mu, se in zip(wij_order, means, sems):
+    print(f"{key}: {mu:.4f} ± {se:.4f}  | n={len(all_samples[key])}")
     
-    plt.figure(figsize=(10, 5))
-    plt.bar(x, means, yerr=sems, capsize=4, alpha=0.85)
-    plt.xticks(x, coupling_names)
-    plt.ylabel('coarse-grained weight')
-    plt.axhline(0, color='k', linewidth=0.5)
-    plt.grid(True, alpha=0.3, axis='y')
-    plt.tight_layout()
-    plt.show()
+# %% Saving for later!
+save = False
+
+if save==True:
+    save_data = {
+        "all_samples": all_samples,
+        "all_third_ids": all_third_ids,
+        "base_triplet": base_triplet,
+        "window_ms": window_ms,
+        "dataset": dataset,
+        "dt": dt,
+    }
+    
+    with open("retina_triplet_sampling.pkl", "wb") as f:
+        pickle.dump(save_data, f)
+    
+    print("Saved to retina_triplet_sampling.pkl")
