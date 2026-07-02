@@ -180,6 +180,72 @@ def coarse_grain_tauC(ijk, tau, C, eps=1e-12):
     return np.log(np.maximum(fexpw, eps) / np.maximum(f, eps))
 
 
+def full_and_prime_coupling(ijk, M, eps=1e-12):
+    """
+    Compute both:
+        w      = effect j -> i when k = 0
+        wprime = effect j -> i when k = 1
+
+    ijk uses local 1-based labels.
+    Example:
+        full_and_prime_coupling((1,2,3), M)
+        returns w12 and w12_prime, where prime means k=3 is ON.
+    """
+
+    j, i, k = ijk
+    M = np.maximum(M, eps)
+
+    # baseline i firing when j=0, k=0:
+    # 000 -> i
+    f0 = M[word_id((0, 0, 0)), word_id(make_bin([i]))]
+
+    # i firing when j=1, k=0:
+    # j -> i+j
+    f_j = M[word_id(make_bin([j])), word_id(make_bin([i, j]))]
+
+    # baseline i firing when j=0, k=1:
+    # k -> i+k
+    f_k = M[word_id(make_bin([k])), word_id(make_bin([i, k]))]
+
+    # i firing when j=1, k=1:
+    # j+k -> 111
+    f_jk = M[word_id(make_bin([j, k])), word_id((1, 1, 1))]
+
+    w = np.log(f_j / f0)
+    wprime = np.log(f_jk / f_k)
+
+    return w, wprime
+
+def infer_full_and_prime_couplings(M):
+    """
+    Return w and wprime for all directed pairwise effects.
+
+    w12       = 1 -> 2 when 3 is OFF
+    w12prime  = 1 -> 2 when 3 is ON
+    """
+
+    labels = ["w12", "w13", "w21", "w23", "w32", "w31"]
+
+    ijks = [
+        (1, 2, 3),  # 1 -> 2, third = 3
+        (1, 3, 2),  # 1 -> 3, third = 2
+        (2, 1, 3),  # 2 -> 1, third = 3
+        (2, 3, 1),  # 2 -> 3, third = 1
+        (3, 2, 1),  # 3 -> 2, third = 1
+        (3, 1, 2),  # 3 -> 1, third = 2
+    ]
+
+    w = []
+    wp = []
+
+    for ijk in ijks:
+        wi, wpi = full_and_prime_coupling(ijk, M)
+        w.append(wi)
+        wp.append(wpi)
+
+    return labels, np.asarray(w), np.asarray(wp)
+
+
 def infer_cg12_cg21(tau, C):
     """
     For nids = [A, B, sampled],
@@ -194,13 +260,15 @@ def infer_cg12_cg21(tau, C):
     return cg12, cg21
 
 
-# %% main analysis
+# %% main analysis ############################################################
+###############################################################################
 mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
 dataset = 1
 
 dt = 1.0
 window_ms = 20 ### 20,  40,80
 window = int(window_ms / dt)
+top_K = 7  ### -1 for all
 
 spk_data, spk_ids = load_dataset(mat_path, dataset)
 
@@ -209,6 +277,7 @@ spk_data, spk_ids = load_dataset(mat_path, dataset)
 # neuron 2 = ID 34
 # neuron 3 = ID 13
 base_triplet = np.array([3, 34, 13])
+only_pair12 = True
 
 sorted_cell_ids, sorted_counts = count_spikes_by_cell(spk_ids)
 list_of_ID = sorted_cell_ids
@@ -231,37 +300,33 @@ pair_jobs = [
         "forward_label": "w12",
         "reverse_label": "w21",
     },
-    {
-        "pair": np.array([base_triplet[0], base_triplet[2]]),
-        "forward_label": "w13",
-        "reverse_label": "w31",
-    },
-    {
-        "pair": np.array([base_triplet[1], base_triplet[2]]),
-        "forward_label": "w23",
-        "reverse_label": "w32",
-    },
 ]
+
+if not only_pair12:
+    pair_jobs.extend([
+        {
+            "pair": np.array([base_triplet[0], base_triplet[2]]),
+            "forward_label": "w13",
+            "reverse_label": "w31",
+        },
+        {
+            "pair": np.array([base_triplet[1], base_triplet[2]]),
+            "forward_label": "w23",
+            "reverse_label": "w32",
+        },
+    ])
+
+active_labels = []
+for job in pair_jobs:
+    active_labels.extend([job["forward_label"], job["reverse_label"]])
 
 
 # %% sample over third neurons
-all_samples = {
-    "w12": [],
-    "w21": [],
-    "w13": [],
-    "w31": [],
-    "w23": [],
-    "w32": [],
-}
+all_samples = {label: [] for label in active_labels}
 
-all_third_ids = {
-    "w12": [],
-    "w21": [],
-    "w13": [],
-    "w31": [],
-    "w23": [],
-    "w32": [],
-}
+all_third_ids = {label: [] for label in active_labels}
+
+all_w_primes = {label: [] for label in active_labels}
 
 for job in pair_jobs:
     pair = job["pair"]
@@ -269,8 +334,7 @@ for job in pair_jobs:
     reverse_label = job["reverse_label"]
     
     ### top K selection, to speed up #####
-    K = 7  ### -1 for all
-    possible_third_neurons = [nid for nid in list_of_ID if nid not in pair][:K]
+    possible_third_neurons = [nid for nid in list_of_ID if nid not in pair][:top_K]
 
     print("\nSampling pair:", pair)
     print("Forward:", forward_label, "Reverse:", reverse_label)
@@ -301,6 +365,12 @@ for job in pair_jobs:
             continue
 
         cg12, cg21 = infer_cg12_cg21(tau_all, C_all)
+        
+        # check w-prime
+        tau_norm = (tau_all+1) / np.sum(tau_all)
+        C_norm = (C_all+1) / np.sum(tau_all)
+        M = (C_norm/tau_norm[:,None])
+        labels, w, wp = infer_full_and_prime_couplings(M)
 
         # Store forward and reverse effects for this fixed pair
         all_samples[forward_label].append(cg12)
@@ -308,6 +378,9 @@ for job in pair_jobs:
 
         all_third_ids[forward_label].append(third_id)
         all_third_ids[reverse_label].append(third_id)
+        
+        all_w_primes[forward_label].append(wp[0])
+        all_w_primes[reverse_label].append(wp[2])
 
 # %% if we just load pkl
 save = False
@@ -317,6 +390,7 @@ if save==True:
     
     all_samples   = data["all_samples"]
     all_third_ids = data["all_third_ids"]
+    all_w_primes  = data['all_w_primes']
     base_triplet  = data["base_triplet"]
     window_ms     = data["window_ms"]
     dataset       = data["dataset"]
@@ -327,12 +401,12 @@ if save==True:
 # %% convert to arrays
 for key in all_samples:
     all_samples[key] = np.asarray(all_samples[key], dtype=float)
+    all_w_primes[key] = np.asarray(all_w_primes[key], dtype=float)
     all_third_ids[key] = np.asarray(all_third_ids[key])
 
 
 # %% MAIN PLOT: six wij bars with error bars over sampled third neurons
-
-wij_order = ["w12", "w13", "w21", "w23", "w32", "w31"]
+wij_order = [label for label in ["w12", "w13", "w21", "w23", "w32", "w31"] if label in all_samples]
 
 means = np.array([np.nanmean(all_samples[k]) for k in wij_order])
 sems = np.array([
@@ -357,14 +431,16 @@ plt.show()
 plt.figure(figsize=(12, 8))
 
 for idx, key in enumerate(wij_order):
-    plt.subplot(3, 2, idx + 1)
+    plt.subplot(len(wij_order), 1, idx + 1)
     plt.plot(all_third_ids[key], all_samples[key], "o", alpha=0.8)
+    plt.plot(all_third_ids[key], all_w_primes[key], "ro", alpha=0.8)
     plt.axhline(0, color="k", linewidth=0.5)
     plt.xlabel("sampled third neuron ID", fontsize=11)
     plt.ylabel("weight", fontsize=11)
     plt.title(key, fontsize=14)
     plt.grid(True, alpha=0.3)
-
+### label o as wij and ro as wij-prime
+plt.legend(["wij", "wij-prime"], loc="upper right", fontsize=10)
 plt.tight_layout()
 plt.show()
 
@@ -380,6 +456,7 @@ if save==True:
     save_data = {
         "all_samples": all_samples,
         "all_third_ids": all_third_ids,
+        "all_w_primes": all_w_primes,
         "base_triplet": base_triplet,
         "window_ms": window_ms,
         "dataset": dataset,
