@@ -263,12 +263,12 @@ def infer_cg12_cg21(tau, C):
 # %% main analysis ############################################################
 ###############################################################################
 mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
-dataset = 1
+dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 
 dt = 1.0
 window_ms = 20 ### 20,  40,80
 window = int(window_ms / dt)
-top_K = 7  ### -1 for all
+top_K = 10  ### -1 for all
 
 spk_data, spk_ids = load_dataset(mat_path, dataset)
 
@@ -276,11 +276,12 @@ spk_data, spk_ids = load_dataset(mat_path, dataset)
 # neuron 1 = ID 3
 # neuron 2 = ID 34
 # neuron 3 = ID 13
-base_triplet = np.array([3, 34, 13])
+base_triplet = np.array([3, 13, 34])### np.array([3, 34, 13])
 only_pair12 = True
 
 sorted_cell_ids, sorted_counts = count_spikes_by_cell(spk_ids)
 list_of_ID = sorted_cell_ids
+id_to_firing_rank = {nid: idx + 1 for idx, nid in enumerate(list_of_ID)}
 
 print("Base triplet:")
 print("neuron 1 = ID", base_triplet[0])
@@ -432,10 +433,13 @@ plt.figure(figsize=(12, 8))
 
 for idx, key in enumerate(wij_order):
     plt.subplot(len(wij_order), 1, idx + 1)
-    plt.plot(all_third_ids[key], all_samples[key], "o", alpha=0.8)
-    plt.plot(all_third_ids[key], all_w_primes[key], "ro", alpha=0.8)
+    xvals = np.asarray([id_to_firing_rank[nid] for nid in all_third_ids[key]])
+    order = np.argsort(xvals)
+    xvals = xvals[order]
+    plt.plot(xvals, all_samples[key][order], "o", alpha=0.8)
+    plt.plot(xvals, all_w_primes[key][order], "ro", alpha=0.8)
     plt.axhline(0, color="k", linewidth=0.5)
-    plt.xlabel("sampled third neuron ID", fontsize=11)
+    plt.xlabel("sampled third neuron rank by firing rate", fontsize=11)
     plt.ylabel("weight", fontsize=11)
     plt.title(key, fontsize=14)
     plt.grid(True, alpha=0.3)

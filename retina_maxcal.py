@@ -23,7 +23,7 @@ matplotlib.rc('ytick', labelsize=20)
 
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
-dataset = 1  # 0-natural, 1-Brownian, 2-repeats
+dataset = 0  # 0-natural, 1-Brownian, 2-repeats
 nid = 34  # neuron example
 reps = 62 #len(mat_data['spike_times'][0][dataset][0])  #62, 50
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
@@ -97,7 +97,7 @@ lt = int(10000/dt) #int(max_lt/dt)
 lts = []  ### store different length!
 firing_s = []  # across repeats!
 
-for dd in range(1,2):   #### try all data!!
+for dd in range(1,2):   #### range(1,2) for bar #try all data!!
     spk_data = mat_data['spike_times'][0][dd][0]  # extract timing
     spk_ids = mat_data['cell_IDs'][0][dd][0]  # extract cell ID
     
