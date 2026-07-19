@@ -384,14 +384,14 @@ for job in pair_jobs:
         all_w_primes[reverse_label].append(wp[2])
 
 # %% if we just load pkl
-save = False
-if save==True:
+load = False
+if load==True:
     with open("retina_triplet_sampling.pkl", "rb") as f:
         data = pickle.load(f)
     
     all_samples   = data["all_samples"]
     all_third_ids = data["all_third_ids"]
-    all_w_primes  = data['all_w_primes']
+    # all_w_primes  = data['all_w_primes']
     base_triplet  = data["base_triplet"]
     window_ms     = data["window_ms"]
     dataset       = data["dataset"]
@@ -402,7 +402,7 @@ if save==True:
 # %% convert to arrays
 for key in all_samples:
     all_samples[key] = np.asarray(all_samples[key], dtype=float)
-    all_w_primes[key] = np.asarray(all_w_primes[key], dtype=float)
+    # all_w_primes[key] = np.asarray(all_w_primes[key], dtype=float)
     all_third_ids[key] = np.asarray(all_third_ids[key])
 
 
@@ -411,7 +411,7 @@ wij_order = [label for label in ["w12", "w13", "w21", "w23", "w32", "w31"] if la
 
 means = np.array([np.nanmean(all_samples[k]) for k in wij_order])
 sems = np.array([
-    np.nanstd(all_samples[k]) / np.sqrt(len(all_samples[k]))
+    np.nanstd(all_samples[k]) / 1 #np.sqrt(len(all_samples[k]))
     for k in wij_order
 ])
 
@@ -422,29 +422,32 @@ plt.bar(x, means, yerr=sems, capsize=4, alpha=0.85)
 plt.xticks(x, wij_order, fontsize=14)
 plt.ylabel("coarse-grained weight", fontsize=16)
 plt.axhline(0, color="k", linewidth=0.8)
-plt.grid(True, alpha=0.3, axis="y")
+# plt.grid(True, alpha=0.3, axis="y")
+plt.ylim([-6.5,2.5])
 plt.tight_layout()
 plt.show()
 
 
 # %% DEBUG PLOT: raw samples across third neurons
-
+wij_order_sub = ['w12', 'w13', 'w21', 'w23', 'w31', 'w32']
 plt.figure(figsize=(12, 8))
 
-for idx, key in enumerate(wij_order):
-    plt.subplot(len(wij_order), 1, idx + 1)
+for idx, key in enumerate(wij_order_sub):
+    # plt.subplot(len(wij_order), 1, idx + 1)
+    plt.subplot(3, 2, idx + 1)
     xvals = np.asarray([id_to_firing_rank[nid] for nid in all_third_ids[key]])
     order = np.argsort(xvals)
     xvals = xvals[order]
     plt.plot(xvals, all_samples[key][order], "o", alpha=0.8)
-    plt.plot(xvals, all_w_primes[key][order], "ro", alpha=0.8)
+    # plt.plot(xvals, all_w_primes[key][order], "ro", alpha=0.8)
     plt.axhline(0, color="k", linewidth=0.5)
     plt.xlabel("sampled third neuron rank by firing rate", fontsize=11)
     plt.ylabel("weight", fontsize=11)
     plt.title(key, fontsize=14)
     plt.grid(True, alpha=0.3)
+    plt.ylim([-6.5,2.5])
 ### label o as wij and ro as wij-prime
-plt.legend(["wij", "wij-prime"], loc="upper right", fontsize=10)
+# plt.legend(["wij", "wij-prime"], loc="upper right", fontsize=10)
 plt.tight_layout()
 plt.show()
 

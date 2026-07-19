@@ -23,7 +23,7 @@ matplotlib.rc('ytick', labelsize=20)
 
 # %% loading retina!
 mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
-dataset = 0  # 0-natural, 1-Brownian, 2-repeats
+dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 nid = 34  # neuron example
 reps = 62 #len(mat_data['spike_times'][0][dataset][0])  #62, 50
 spk_data = mat_data['spike_times'][0][dataset][0]  # extract timing
@@ -414,14 +414,14 @@ plt.subplot(211)
 plt.bar(categories, inf_w, width=bar_width)
 plt.plot(categories, bar_positions_group2*0, 'k')
 plt.ylabel('inferred', fontsize=20)
-plt.ylim([-5.5,2.5])
+plt.ylim([-6.5,2.5])
 # plt.ylim([-4.5, 2])
 
 plt.subplot(212)
 plt.bar(bar_positions_group1, np.array([weff12,weff13,weff21,weff23,weff32,weff31])+0, width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('coarse grain', fontsize=20)
-plt.ylim([-5.5,2.5])
+plt.ylim([-6.5,2.5])
 # plt.ylim([-4.5,2])
 # plt.savefig('retina_infer_CG_B20_full.pdf')
 
