@@ -411,14 +411,17 @@ wij_order = [label for label in ["w12", "w13", "w21", "w23", "w32", "w31"] if la
 
 means = np.array([np.nanmean(all_samples[k]) for k in wij_order])
 sems = np.array([
-    np.nanstd(all_samples[k]) / 1 #np.sqrt(len(all_samples[k]))
+    np.nanstd(all_samples[k]) / np.sqrt(len(all_samples[k]))
     for k in wij_order
 ])
 
 x = np.arange(len(wij_order))
 
-plt.figure(figsize=(8, 5))
-plt.bar(x, means, yerr=sems, capsize=4, alpha=0.85)
+bar_width = 0.35
+# plt.figure(figsize=(8, 5))
+plt.figure()
+plt.subplot(211)
+plt.bar(x, means, yerr=sems, capsize=4, width=bar_width)
 plt.xticks(x, wij_order, fontsize=14)
 plt.ylabel("coarse-grained weight", fontsize=16)
 plt.axhline(0, color="k", linewidth=0.8)
