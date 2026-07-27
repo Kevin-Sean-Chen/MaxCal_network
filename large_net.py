@@ -24,6 +24,8 @@ from brian2 import *
 import matplotlib.pyplot as plt
 import numpy as np
 
+save_pdf = False  # Set to True to save figures as PDF instead of showing interactively
+
 # ----------------------------
 # Simulation settings
 # ----------------------------
@@ -32,7 +34,7 @@ seed(seedi)  # for reproducibility
 rng = np.random.default_rng(seedi)
 
 defaultclock.dt = 0.1 * ms
-duration = 10.0*1 * second
+duration = 10.0*2 * second
 
 # ----------------------------
 # Inference Max Cal parameters
@@ -163,10 +165,17 @@ print(f"Mean firing rate: {mean_rate / Hz:.2f} Hz")
 # ----------------------------
 # Plot results
 # ----------------------------
+plt.figure()
+plt.plot(spike_mon.t / second, spike_mon.i, ".k", markersize=2)
+plt.xlim([0,3])
+if save_pdf is True:
+    plt.savefig("large_net_spk.pdf", format="pdf", bbox_inches="tight") 
+
 fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=False)
 
 # Spike raster
-axes[0].plot(spike_mon.t / ms, spike_mon.i, ".k", markersize=2)
+axes[0].plot(spike_mon.t / second, spike_mon.i, ".k", markersize=2)
+axes[0].set_xlabel("Time (s)")
 axes[0].set_ylabel("Neuron index")
 axes[0].set_title("Spike raster")
 
@@ -444,8 +453,8 @@ fig = plt.figure(figsize=(14, 10))
 
 # (a) Spike raster
 ax1 = plt.subplot(2, 3, 1)
-ax1.plot(spike_mon.t / ms, spike_mon.i, ".k", markersize=2)
-ax1.set_xlabel("Time (ms)")
+ax1.plot(spike_mon.t / second, spike_mon.i, ".k", markersize=2)
+ax1.set_xlabel("Time (s)")
 ax1.set_ylabel("Neuron index")
 ax1.set_title("Spike raster")
 
@@ -808,6 +817,20 @@ def consistency_cosine_triplet(record):
     return cos_ang(inf_w, true_w)
 
 
+def kde_smooth(data, xgrid, bw=None):
+    data = np.asarray(data, dtype=float)
+    data = data[np.isfinite(data)]
+    if data.size == 0:
+        return None
+    std = np.std(data)
+    if bw is None:
+        bw = 1.06 * std * (data.size ** (-1 / 5)) if std > 0 else 0.1
+    bw = max(bw, 1e-3)
+    diff = (xgrid[:, None] - data[None, :]) / bw
+    dens = np.exp(-0.5 * diff ** 2).sum(axis=1) / (data.size * bw * np.sqrt(2 * np.pi))
+    return dens
+
+
 # %% iterate random 3-neuron motifs from 100-neuron spike data
 triplet_records = []
 quartet_records = []
@@ -855,6 +878,14 @@ if not triplet_records:
             "inf_w": out["inf_w"],
             "inf_u": out["inf_u"],
             "true_w": out["true_w"],
+            "inf_corr": np.array([
+                C[triplet[1], triplet[0]],
+                C[triplet[2], triplet[0]],
+                C[triplet[0], triplet[1]],
+                C[triplet[2], triplet[1]],
+                C[triplet[1], triplet[2]],
+                C[triplet[0], triplet[2]],
+            ], dtype=float),
         })
 
         if len(triplet_records) % 50 == 0:
@@ -872,6 +903,18 @@ if len(triplet_records) > 0:
     sign_u_vals = np.array([rr["sign_u"] for rr in triplet_records], dtype=float)
     cos_vals = np.array([rr["cos"] for rr in triplet_records], dtype=float)
     cos_u_vals = np.array([rr["cos_u"] for rr in triplet_records], dtype=float)
+    cos_corr_vals = []
+    for rr in triplet_records:
+        inf_corr = rr.get("inf_corr")
+        true_w = rr.get("true_w")
+        if inf_corr is None or true_w is None:
+            continue
+        if np.std(inf_corr) < 1e-12 or np.std(true_w) < 1e-12:
+            continue
+        val = cos_ang(inf_corr, true_w)
+        if np.isfinite(val):
+            cos_corr_vals.append(val)
+    cos_corr_vals = np.array(cos_corr_vals, dtype=float)
 
     consistent_cos = []
     for rr in triplet_records:
@@ -909,16 +952,33 @@ if len(triplet_records) > 0:
     plt.tight_layout()
     plt.show()
 
-    if consistent_cos.size > 0:
+    if consistent_cos.size > 0 or cos_corr_vals.size > 0:
         plt.figure(figsize=(6.6, 4.4))
-        plt.hist(cos_u_vals[np.isfinite(cos_u_vals)], bins=30, alpha=0.35, label='2N (u)', color='tab:orange', density=True)
-        plt.hist(cos_vals[np.isfinite(cos_vals)], bins=30, alpha=0.35, label='3N (w)', color='tab:blue', density=True)
-        plt.hist(consistent_cos, bins=30, alpha=0.45, label='3N (sign-consistent)', color='tab:green', density=True)
+        xgrid = np.linspace(-1, 1, 400)
+
+        dens_corr = kde_smooth(cos_corr_vals, xgrid)
+        if dens_corr is not None:
+            plt.plot(xgrid, dens_corr, color='tab:gray', linewidth=2.2, label='corr (C)')
+
+        dens_u = kde_smooth(cos_u_vals, xgrid)
+        if dens_u is not None:
+            plt.plot(xgrid, dens_u, color='tab:orange', linewidth=2.2, label='2N (u)')
+
+        dens_w = kde_smooth(cos_vals, xgrid)
+        if dens_w is not None:
+            plt.plot(xgrid, dens_w, color='tab:blue', linewidth=2.2, label='3N (w)')
+
+        dens_c = kde_smooth(consistent_cos, xgrid)
+        if dens_c is not None:
+            plt.plot(xgrid, dens_c, color='tab:green', linewidth=2.2, label='3N (sign-consistent)')
+
         plt.xlabel("cosine angle")
         plt.ylabel("density")
-        plt.title("Cosine distributions: 2N vs 3N vs sign-consistent")
+        plt.title("Cosine KDE: corr vs 2N vs 3N vs consistent")
         plt.legend()
         plt.tight_layout()
+        if save_pdf is True:
+            plt.savefig("large_net_pdf.pdf", format="pdf", bbox_inches="tight") 
         plt.show()
 
     # Compare cosine-angle distributions of w and u in one figure
@@ -947,6 +1007,61 @@ if len(triplet_records) > 0:
     finite_mask_u = np.isfinite(true_all_raw) & np.isfinite(u_all)
     true_u = true_all_raw[finite_mask_u]
     u_all = u_all[finite_mask_u]
+
+    if true_all.size > 0:
+        true_pos = true_all > 0
+        true_neg = true_all < 0
+        pred_pos = inf_all > 0
+        pred_neg = inf_all < 0
+        frac_E = np.nan if true_pos.sum() == 0 else np.mean(pred_pos[true_pos])
+        frac_I = np.nan if true_neg.sum() == 0 else np.mean(pred_neg[true_neg])
+        print(f"Fraction true E inferred E (3N w): {frac_E:.3f}")
+        print(f"Fraction true I inferred I (3N w): {frac_I:.3f}")
+
+    if true_u.size > 0:
+        true_pos_u = true_u > 0
+        true_neg_u = true_u < 0
+        pred_pos_u = u_all > 0
+        pred_neg_u = u_all < 0
+        frac_E_u = np.nan if true_pos_u.sum() == 0 else np.mean(pred_pos_u[true_pos_u])
+        frac_I_u = np.nan if true_neg_u.sum() == 0 else np.mean(pred_neg_u[true_neg_u])
+        print(f"Fraction true E inferred E (2N u): {frac_E_u:.3f}")
+        print(f"Fraction true I inferred I (2N u): {frac_I_u:.3f}")
+
+    # Consistency inference: sign agreement between 3N (w) and 2N (u)
+    true_cons_list = []
+    inf_cons_list = []
+    for rr in triplet_records:
+        iw = rr.get("inf_w")
+        iu = rr.get("inf_u")
+        tw = rr.get("true_w")
+        if iw is None or iu is None or tw is None:
+            continue
+        iw = np.asarray(iw, dtype=float)
+        iu = np.asarray(iu, dtype=float)
+        tw = np.asarray(tw, dtype=float)
+        if iw.size != iu.size:
+            continue
+        if np.all(np.sign(iw) == np.sign(iu)):
+            true_cons_list.append(tw)
+            inf_cons_list.append(iw)
+
+    if len(true_cons_list) > 0:
+        true_cons = np.concatenate(true_cons_list)
+        inf_cons = np.concatenate(inf_cons_list)
+        m_cons = np.isfinite(true_cons) & np.isfinite(inf_cons)
+        true_cons = true_cons[m_cons]
+        inf_cons = inf_cons[m_cons]
+
+        true_pos_cons = true_cons > 0
+        true_neg_cons = true_cons < 0
+        pred_pos_cons = inf_cons > 0
+        pred_neg_cons = inf_cons < 0
+        frac_E_cons = np.nan if true_pos_cons.sum() == 0 else np.mean(pred_pos_cons[true_pos_cons])
+        frac_I_cons = np.nan if true_neg_cons.sum() == 0 else np.mean(pred_neg_cons[true_neg_cons])
+
+        print(f"Fraction true E inferred E (consistent): {frac_E_cons:.3f}")
+        print(f"Fraction true I inferred I (consistent): {frac_I_cons:.3f}")
 
     if true_all.size > 0 or true_u.size > 0:
         cats = np.array([-1.0, 0.0, 1.0])
@@ -993,11 +1108,17 @@ if len(triplet_records) > 0:
         plt.tight_layout()
         plt.show()
 
-    # Violin plots for cosine angle: 2N, 3N, and sign-consistent 3N
-    if cos_u_vals.size > 0 or cos_vals.size > 0 or consistent_cos.size > 0:
+    # Violin plots for cosine angle: corr, 2N, 3N, and sign-consistent 3N
+    if cos_u_vals.size > 0 or cos_vals.size > 0 or consistent_cos.size > 0 or cos_corr_vals.size > 0:
         groups = []
         labels = []
         colors = []
+
+        valsc0 = cos_corr_vals[np.isfinite(cos_corr_vals)]
+        if valsc0.size > 0:
+            groups.append(valsc0)
+            labels.append('corr (C)')
+            colors.append('tab:gray')
 
         vals2 = cos_u_vals[np.isfinite(cos_u_vals)]
         if vals2.size > 0:
