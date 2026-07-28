@@ -18,12 +18,13 @@ from scipy.stats import pearsonr
 import matplotlib 
 import pickle
 import random
+from matplotlib.patches import Patch
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-np.random.seed(1) #1, 37
+np.random.seed(1)
 
 # %%
 def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None, stim=None, counter=0, lt=100000):
@@ -32,9 +33,9 @@ def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None, stim
     """
     #############################
     ### perturbation parameters
-    stim_dur = 10 #10 # 5
-    stim_inter = 200  # 100
-    It = 50  #50
+    stim_dur = 10 
+    stim_inter = 200
+    It = 50
     if stim is None:
         It = 0
     #############################
@@ -57,7 +58,6 @@ def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None, stim
             
     S = synaptic_weights*1
     np.fill_diagonal(S, np.zeros(3))
-    # noise_amp = 2
 
     # Synaptic filtering parameters
     tau_synaptic = np.array([5, 5, 5])  #5.0  # synaptic time constant
@@ -108,12 +108,16 @@ def LIF_firing(synaptic_weights, noise_amp, syn_delay=None, syn_ratio=None, stim
             #     # v_neurons[pert_neuron, t] -= It*dt
             #     counter += 1
     
-            if counter > 0 and counter < stim_dur:  # logic for perturbation  ### edit this!!!
+            if counter > 0 and counter < stim_dur:  # logic for perturbation  ### choose different protocols ###
+                ### randomly pick a neuron to perturb
                 # for nn in range(3):
                     # v_neurons[nn, t] -= It*dt
                     # v_neurons[nn, t] = v_rest
+                ### excitatory perturbation
                 # v_neurons[:, t] += It*dt
-                v_neurons[pert_neuron, t] = v_reset#
+                ### reset perturbation
+                v_neurons[pert_neuron, t] = v_reset
+                # inhibitory perturbation
                 # v_neurons[:, t] -= It*dt
                 # v_neurons[pert_neuron, t] = v_neurons[pert_neuron, t]*1 ## control
                 counter += 1 *dt
@@ -201,15 +205,6 @@ for rr in range(reps): ### repears
                 tau_, C_ = (tau + 1)/lt, (C + 1)/lt # correct normalization  #######################################
                 observations = np.concatenate((tau_, C_.reshape(-1))) 
                 
-                ### run max-cal!
-                # constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-                # bounds = [(.0, 100)]*num_params
-        
-                # # Perform optimization using SLSQP method
-                # param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-                # result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-                # param_temp = result.x
-                
                 # # computed and record the corresponding KL
                 M_inf = (C_/tau_[:,None]) #+ 1/lt  # to prevent exploding
                 # M_inf, pi_inf = param2M(param_temp)
@@ -242,11 +237,6 @@ plt.xlabel('weights', fontsize=20); plt.ylabel('cos', fontsize=20) ;plt.ylim([0,
 
 # %% try violin plots
 ###############################################################################
-
-# Re-import necessary modules after kernel reset
-import numpy as np
-import matplotlib.pyplot as plt
-
 # Example vectors (replace with your own data)
 data1 = coss[0,2,:, 0]
 data2 = coss[0,2,:, 1]
@@ -291,7 +281,6 @@ ax.set_ylabel('cosine', fontsize=20)
 ax.grid(True, linestyle='--', alpha=0.5)
 
 # Add legend
-from matplotlib.patches import Patch
 legend_elements = [Patch(facecolor='skyblue', edgecolor='black', label='spon.'),
                    Patch(facecolor='lightcoral', edgecolor='black', label='perturbed')]
 ax.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1), fontsize=15)

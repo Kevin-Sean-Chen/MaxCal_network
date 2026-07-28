@@ -13,7 +13,6 @@ from pathlib import Path
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
-import numpy as np
 import scipy.io
 import matplotlib.pyplot as plt
 

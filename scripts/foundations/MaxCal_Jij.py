@@ -255,8 +255,6 @@ def gxy_state_test(x, y, obs=0):
 # %% test code for Markov process
 ###############################################################################
 # %%
-import numpy as np
-
 # Define a transition matrix for a 3-state Markov Chain
 P_true = np.array([[0.7, 0.2, 0.1],
                    [0.3, 0.5, 0.2],

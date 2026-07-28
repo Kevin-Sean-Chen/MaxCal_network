@@ -38,7 +38,7 @@ synaptic_3neuron = np.array([[0, 1, -2],  # Neuron 0 connections
                               [1, 1,  0]])*20  #20  # Neuron 2 connections
 
 # random circuit
-hidden_stength = 40  # 2 5 10 15 20  # 2 10 20 30 40
+hidden_stength = 2  # 2 5 10 15 20  # 2 10 20 30 40
 ### EI structured connections
 synaptic_weights = np.ones((N5,N5))*hidden_stength
 sign = np.ones((N5,N5)); sign[:,-1] *= -2  # make on I cell
@@ -414,21 +414,7 @@ plt.colorbar()
 
 # %%
 # hidden_str = np.array([20,15,10,5,2])/20
-hidden_str = np.array([40,30,20,10,2])/20
-plt.figure()
-# plt.plot(hidden_str, np.array([0.74,0.86,0.91,0.95,0.98]),'-o')
-# plt.plot(hidden_str, np.array([0.70,0.73,0.82,0.91,0.98]),'-o')
-
-# plt.plot(hidden_str, np.array([.6775467031709071, .8706646317156895, .9214852480402794,\
-#                                .9843874043062822, .9908173400126193]),'-o', label='corr')
-# plt.plot(hidden_str, np.array([-0.3333333333333334, .0, 0.6666666666666669,\
-#                                1., 1.]),'-o', label='signed corr')
-    
-plt.plot(hidden_str, np.flip(np.array([0.9505114946961636, 0.9627220474421325, 0.8289460323019745,\
-                               0.5134746570658676, 0.14765253151511745]),0),'-o', label='cos-ang')
-    
-plt.xlabel('hidden/structure strength', fontsize=20)
-plt.ylabel('correlation coefficient', fontsize=20); plt.legend(fontsize=20)
+# hidden_str = np.array([40,30,20,10,2])/20
 # plt.savefig('3_of_5_error_cos.pdf')
 
 # Optional pickle save example.

@@ -24,6 +24,8 @@ from brian2 import *
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
+import os
+import pickle
 
 save_pdf = False  # Set to True to save figures as PDF instead of showing interactively
 
@@ -218,10 +220,6 @@ Brian2 random spiking network + simple analysis:
 Requirements:
     pip install brian2 matplotlib numpy
 """
-
-from brian2 import *
-import numpy as np
-import matplotlib.pyplot as plt
 
 # ============================================================
 # 1. SIMULATE A RANDOM SPIKING NETWORK
@@ -535,9 +533,6 @@ plt.show()
 ##########################################################################
 # %% setup
 from maxcal_network import spk2statetime, compute_tauC, spk2statetime_4N, compute_tauC_4N, cos_ang, corr_param
-import os
-import pickle
-
 
 def spike_monitor_to_firing(spike_mon, timesteps):
     """

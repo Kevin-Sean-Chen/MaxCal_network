@@ -206,7 +206,7 @@ def param2M(param, N=N, combinations=combinations):
     M = mask*FR  
 
     ### compute steady-state
-    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
+    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
     pi_ss = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])

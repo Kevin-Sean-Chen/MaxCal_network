@@ -287,7 +287,7 @@ spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))
 M_inf, pi_inf = param2M(param_temp, N, combinations)  #dof_cut
 np.fill_diagonal(M_inf, np.zeros(nc))
-############### hijack
+############### direct computation
 M_inf = (C_/tau_[:,None])
 ##############
 f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
