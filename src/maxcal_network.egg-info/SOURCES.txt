@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+src/maxcal_network/__init__.py
+src/maxcal_network/dynamics.py
+src/maxcal_network/maxcal_functions.py
+src/maxcal_network/metrics.py
+src/maxcal_network/optimization.py
+src/maxcal_network/simulation.py
+src/maxcal_network.egg-info/PKG-INFO
+src/maxcal_network.egg-info/SOURCES.txt
+src/maxcal_network.egg-info/dependency_links.txt
+src/maxcal_network.egg-info/requires.txt
+src/maxcal_network.egg-info/top_level.txt
+tests/test_core.py

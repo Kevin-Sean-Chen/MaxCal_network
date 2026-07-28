@@ -1,0 +1,33 @@
+Figure 2
+C5_3_scan_<hidden_strength>.pkl | scripts/inference/motifs/MaxCal_err.py
+EI_fig4_curve_<hidden_strength>.pkl | scripts/inference/motifs/MaxCal_err.py
+
+Figure 3
+motif_<motif_type>.pkl | scripts/inference/motifs/MaxCal_motif.py
+
+Figure 4
+spk_GC_comparison.pkl | scripts/benchmarks/GC_plus.py
+GC_comparison3.pkl | scripts/benchmarks/GC_linear.py
+glm_comparison3.pkl | scripts/benchmarks/glm_test.py
+
+Figure 5
+C5_3neuron_<hidden_strength>.pkl | scripts/inference/coarse_graining/MaxCal_C5_3.py
+
+Figure 6
+maxcal_inference_cache.pkl | scripts/simulations/large_net.py
+
+Figure 7
+retina_triplet_sampling.pkl | scripts/retina/retina_sample.py
+
+Figure 8
+remedy_stim_Ionly.pkl | scripts/scans/scan_stim.py
+
+
+Supporting information
+scan_dof_10.pkl | scripts/scans/scan_dof.py
+perturbations_noise.pkl | scripts/scans/scan_net.py
+learning_block_ctmc.pkl | scripts/inference/learning/MaxCal_block.py
+learning_block_LIF2.pkl | scripts/inference/learning/MaxCal_block.py
+LIF_3neuron_new5.pkl | scripts/inference/exploratory/MaxCal_delay.py
+cos_ang_time_c_ei.pkl | scripts/inference/learning/MaxCal_scale_t.py
+LIF_3neuron_new5.pkl | scripts/inference/motifs/MaxCal_spk.py

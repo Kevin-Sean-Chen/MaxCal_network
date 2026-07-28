@@ -1,0 +1,19 @@
+name: maxcal-network
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.12
+  - pip
+  - setuptools>=68
+  - numpy<2
+  - scipy
+  - matplotlib
+  - statsmodels
+  - scikit-learn
+  - networkx
+  - brian2
+  - pyglmnet
+  - pip:
+      - -e .

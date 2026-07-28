@@ -1,0 +1,26 @@
+Metadata-Version: 2.4
+Name: maxcal-network
+Version: 0.1.0
+Summary: Maximum-caliber tools for network inference.
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: scipy
+
+# MaxCal_network
+
+scripts to infer connectivity or kinetic parameters in networks using maximum caliber methods.
+
+Code includes
+
+- Generation of spike trains
+- Approximated inference for connectivity
+- Markov dynamic spike trains
+- MaxCal to infer connectivity
+- MaxCal in the parameter space
+
+### To-do:
+
+- explore symmetry effects
+- generalize to continuous time
+- fit to experimental data

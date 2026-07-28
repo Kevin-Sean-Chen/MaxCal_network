@@ -1,0 +1,28 @@
+Required benchmark files
+GC_comparison.pkl
+GC_comparison3.pkl
+glm_comparison3.pkl
+spk_GC_comparison.pkl
+
+Required scan files
+remedy_stim_Ionly.pkl
+remedy_stim_Eonly.pkl
+remedy_stim_rand.pkl
+perturbations_weight.pkl
+perturbations_noise.pkl
+perturbations_delay.pkl
+perturbations_diff.pkl
+weight_isi_scan3.pkl
+
+Required inference files
+C4_3neuron_LIF_match.pkl
+
+Required retina files
+Data_processed.mat
+data.mat
+stim.mat
+stas.mat
+
+Optional files
+retina_triplet_sampling.pkl
+maxcal_inference_cache.pkl
