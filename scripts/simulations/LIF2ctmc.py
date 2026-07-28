@@ -20,6 +20,7 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 
+np.random.seed(0)  # for reproducibility
 # %% LIF model
 ###############################################################################
 # %%
