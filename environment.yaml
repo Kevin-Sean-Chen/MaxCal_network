@@ -14,6 +14,7 @@ dependencies:
   - scikit-learn
   - networkx
   - brian2
+  - jupyterlab
   - pyglmnet
   - pip:
       - -e .

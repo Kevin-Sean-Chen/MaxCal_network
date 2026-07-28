@@ -46,8 +46,17 @@ scripts/
   retina/               Retinal-data studies
   scans/                Parameter scans
   simulations/          LIF and large-network simulations
+notebooks/              Interactive demonstrations
 src/maxcal_network/     Reusable package functions
 tests/                  Automated tests
+```
+
+## Demo notebook
+
+Open `notebooks/maxcal_net_demo.ipynb` in JupyterLab. The notebook simulates a three-neuron LIF network, converts spikes into CTMC observations, and runs MaxCal inference.
+
+```bash
+jupyter lab notebooks/maxcal_net_demo.ipynb
 ```
 
 ## Reproduce manuscript figures

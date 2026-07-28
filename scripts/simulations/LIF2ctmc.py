@@ -53,13 +53,13 @@ synaptic_weights = np.array([[0, 1, -2],  # Neuron 0 connections
 #                               [1, 0, 0]])*20  #20  # Neuron 2 connections
 
 # chain circuit
-synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
-                              [1, 0, 0],  # Neuron 1 connections
-                              [0, 1, 0]])*20  #20  # Neuron 2 connections
+# synaptic_weights = np.array([[0, 0, 0],  # Neuron 0 connections
+#                               [1, 0, 0],  # Neuron 1 connections
+#                               [0, 1, 0]])*20  #20  # Neuron 2 connections
 
 S = synaptic_weights*1
 np.fill_diagonal(S, np.zeros(3))
-noise_amp = 1.  # 2.0 or 2.5 (1.5, 3.0)
+noise_amp = 1.7  # 2.0 or 2.5 (1.5, 3.0)
 
 # Synaptic filtering parameters
 tau_synaptic = 5.0  # synaptic time constant
