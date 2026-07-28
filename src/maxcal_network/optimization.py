@@ -45,6 +45,6 @@ def objective_param(param, kij0):
 def eq_constraint(param, observations, Cp_condition):
     Pxy = P_frw_ctmc(param)
     cp = C_P(Pxy, observations, param, Cp_condition)
-    return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
+    return 0.5*np.sum(cp**2)
 
 

@@ -4,6 +4,8 @@ Created on Sat Feb 24 23:57:30 2024
 
 @author: kevin
 """
+from maxcal_network import EP, P_frw_ctmc, get_stationary, sim_Q
+
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -68,50 +70,6 @@ def param2M(param, N=N):
     return M, np.real(pi_ss)
 
 # %% network simulation
-def sim_Q(Q, total_time, time_step):
-    """
-    Simulate Markov chain given rate matrix Q, time length and steps
-    reading this: https://www.columbia.edu/~ww2040/6711F13/CTMCnotes120413.pdf
-    """
-    nc = Q.shape[0]
-    initial_state = np.random.randint(nc) # uniform to begin with
-    states = [initial_state]
-    times = [0.0]
-
-    current_state = initial_state
-    current_time = 0.0
-
-    while current_time < total_time:
-        rate = -Q[current_state, current_state]
-        next_time = current_time + np.random.exponential(scale=1/rate)
-        if next_time > total_time:
-            break
-
-        transition_probabilities = Q[current_state,:]*1#expm(Q * (next_time - current_time))[current_state, :]
-        transition_probabilities[current_state] = 0  # remove diagonal
-        transition_probabilities /= transition_probabilities.sum()  # Normalize probabilities
-        next_state = np.random.choice(len(Q), p=transition_probabilities)
-        # print(transition_probabilities)
-        
-        #####
-        # # Generate exponentially distributed time until the next event 
-        # rate = abs(Q[current_state, current_state]) 
-        # time_to_next_event = np.random.exponential(scale=1/rate) # Update the time and state 
-        # time_points.append(time_points[-1] + time_to_next_event) # Determine the next state based on transition probabilities 
-        # transition_probs = Q[current_state, :] / rate transition_probs[transition_probs < 0] = 0  # Ensure non-negative probabilities 
-        # transition_probs /= np.sum(transition_probs)  # Normalize probabilities to sum to 1 
-        # next_state = np.random.choice(len(Q), p=transition_probs) 
-        # state_sequence.append(next_state)
-        #####
-        
-        states.append(next_state)
-        times.append(next_time)
-
-        current_state = next_state
-        current_time = next_time
-
-    return np.array(states), np.array(times)
-
 total_time = 50
 time_step = 1  # check with Peter if this is ok... THIS is OK
 M,pi_ss = param2M(param_true)
@@ -145,17 +103,6 @@ def compute_tauC(states, times, nc=nc):
 tau_finite, C_finite = compute_tauC(states, times)  # emperical measurements
 
 # %% computing statistics for infinite data given parameter
-def P_frw_ctmc(param):
-    """
-    get joint probability given parameters (need to change for ctmc??)
-    """
-    k, pi = param2M(param)  # calling asymmetric network
-    nc = len(pi)
-    Pxy = np.zeros((nc,nc))
-    for ii in range(nc):
-        Pxy[ii,:] = k[ii,:]*pi[ii]  # compute joint from transition k and steady-state pi (this is wrong using Q!?)
-    return Pxy
-
 def edge_flux_inf(param):
     """
     compute edge flux with infinite data using pi_i k_ij
@@ -168,23 +115,6 @@ def edge_flux_inf(param):
             if ii is not jj:
                 flux_ij[ii,jj] = pi[ii]*kij[ii,jj]
     return flux_ij
-
-def EP(kij):
-    """
-    given transition matrix, compute entropy production
-    """
-    pi = get_stationary(kij)
-    # kij = Pij / pi[:,None]
-    eps = 1e-20
-    ep = 0
-    n = len(pi)
-    for ii in range(n):
-        for jj in range(n):
-            Pij = pi[ii]*kij[ii,jj]
-            Pji = pi[jj]*kij[jj,ii]
-            if ii is not jj:
-                ep += Pij*(np.log(Pij+eps)-np.log(Pji+eps))
-    return ep 
 
 def corr_param(param_true, param_infer, mode='binary'):
     """
@@ -229,16 +159,6 @@ def MaxCal_D(kij, kij0, param):
                       + pi[ii]*kij0[ii,jj] - Pij
     return kl
 
-def get_stationary(M):
-    """
-    get stationary state distribution given a transition matrix M
-    """
-    uu,vv = np.linalg.eig(M.T)
-    zeros_eig_id = np.argmin(np.abs(uu-1))
-    pix = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
-    return np.real(pix)
-
-
 def C_P(P, observations, param, Cp_condition):
     """
     The C(P,f,r,w) function for constraints
@@ -262,7 +182,7 @@ def objective_param(param, kij0):
 def eq_constraint(param, observations, Cp_condition):
     Pxy = P_frw_ctmc(param)
     cp = C_P(Pxy, observations, param, Cp_condition)
-    return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
+    return 0.5*np.sum(cp**2)
 
 # %% building constraints
 dofs = num_params*1

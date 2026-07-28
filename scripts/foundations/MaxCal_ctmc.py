@@ -42,7 +42,7 @@ def ctmc_M(param):
                   [r2,   0,    0,     w21],
                   [r1,   0,    0,     w12],
                   [0,    r1,   r1,    0]]) ## 00,01,10,11   # f1*np.exp(w21)
-    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
+    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
     pi_ss = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
@@ -119,7 +119,7 @@ def edge_flux_data(param, total_time, time_step):
                 posj = np.where(states==jj)[0]
                 flux_ij[ii,jj] = len(np.intersect1d(posi-1, posj))
     flux_ij = flux_ij/total_time
-    return flux_ij  ### need to confirm this calculation...
+    return flux_ij 
 
 def sim_Q(Q, total_time, time_step):
     """
@@ -365,9 +365,3 @@ frw_inf = result.x
 
 print('true frw:', param_true)
 print('inferred frw:', frw_inf)
-
-# %%
-###############################################################################
-# three neurons
-# LIF neural model for demo
-# apply to retina!

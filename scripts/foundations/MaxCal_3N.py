@@ -118,7 +118,7 @@ def ctmc_M(param):
                   [0,    0,    r1,   0,              r2,   0,               0,               f3*np.exp(w123)],
                   [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
                 ## 000,001,010,011,100,101,110,111   # f1*np.exp(w21)
-    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
+    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
     pi_ss = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
@@ -165,7 +165,7 @@ def marginalization(P, param):
     piX0 = pi[0] + pi[1] + pi[2] + pi[3]
     piY0 = pi[0] + pi[1] + pi[4] + pi[5]
     piZ0 = pi[0] + pi[2] + pi[4] + pi[6]
-    etaX = etas[1,5] + etas[3,7] + etas[0,4] + etas[2,6]  # is this correct?
+    etaX = etas[1,5] + etas[3,7] + etas[0,4] + etas[2,6]
     etaY = etas[0,2] + etas[4,6] + etas[5,7] + etas[1,3]
     etaZ = etas[0,1] + etas[2,3] + etas[4,5] + etas[6,7]  
     # three planes for piXYZ, etaXYZ sum edge within plane
@@ -197,7 +197,7 @@ def edge_flux_data(param, total_time, time_step):
                 posj = np.where(states==jj)[0]
                 flux_ij[ii,jj] = len(np.intersect1d(posi-1, posj))
     flux_ij = flux_ij/total_time
-    return flux_ij  ### need to confirm this calculation...
+    return flux_ij
 
 def sim_Q(Q, total_time, time_step):
     """
@@ -388,11 +388,5 @@ for i in range(num_rows):
     
 plt.legend(fontsize=15)
 plt.xlabel('parameters', fontsize=20)
-
-# %% Notes for next step
-###############################################################################
-# three neurons
-# LIF neural model for demo
-# apply to retina!
 
 plt.show()

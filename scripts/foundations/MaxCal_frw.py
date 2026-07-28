@@ -232,28 +232,3 @@ x0 = np.concatenate((param0, beta0))
 
 # %% test solver
 #frw_ = C__P_solve(param_true, observations)
-
-# %% coordinate method
-### is this even correct??!!!??
-#n_step = 10
-#frw_ = param0*1
-#beta_ = beta0*1
-#loss = np.zeros(n_step)
-#for ii in range(n_step):
-#    ### use graditn
-#    result_frw = minimize(objective_fix_beta, frw_, args=(beta_, observations, P0),tol=10**-2,method='L-BFGS-B',bounds=[(0,1)]*3)
-#    frw_ = result_frw.x*1
-#    ### use solver
-##    frw_ = C__P_solve(frw_, observations)
-#    
-#    result_beta = minimize(objective_fix_param, beta_, args=(frw_, observations, P0),tol=10**-2,method='L-BFGS-B')
-#    beta_ = result_beta.x*1
-#    
-#    loss[ii] = result_frw.fun
-    
-# %%
-#####
-# If this code has the correct setup, next step would be to exlore better optimization methods
-# a candidate is to you pytorch to compute gradient for coordinate desciending
-#####
-    

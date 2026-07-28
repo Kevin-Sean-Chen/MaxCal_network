@@ -75,10 +75,7 @@ Supporting-information scripts:
 
 ## Data
 
-Place required `.pkl` and `.mat` files in `data/`. All active data loaders resolve this folder from the repository location.
-
-- [`data/required_files.txt`](data/required_files.txt) lists expected input files.
-- [`data/pickle_save_sources.txt`](data/pickle_save_sources.txt) maps figure data to source scripts.
+Use `data/` as the target location for required `.pkl` and `.mat` files. Benchmark scripts already read from this folder.
 
 Some scripts still contain commented pickle-save examples. These examples do not write files unless a user removes the comment markers.
 

@@ -13,5 +13,19 @@ dependencies = [
     "scipy",
 ]
 
+[project.optional-dependencies]
+scripts = [
+    "brian2",
+    "matplotlib",
+    "networkx",
+    "numpy<2",
+    "pyglmnet==1.1",
+    "scikit-learn",
+    "statsmodels",
+]
+dev = [
+    "ruff",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -78,8 +78,6 @@ Pyx = np.zeros((nc,nc))
 for ii in range(nc):
     for jj in range(nc):
         Pyx[ii,jj] = 1/lamb*vrx[jj]/vrx[ii]*Mxy_[ii,jj]  # transition matrix
-#Pyx = (vrx)/(lamb*(vlx))*Mxy_  # posterior.... not sure about this?  #ry/rx, not l!!
-#(vry)/(lamb*(vrx))*Mxy_
 Pxy = np.zeros((nc,nc))
 for ii in range(nc):
     Pxy[ii,:] = Pyx[ii,:]*vrx[ii]*vlx[ii]
@@ -197,9 +195,5 @@ plt.yticks(range(len(combinations)), combinations);
 print('observed g:'+str(g_bar))
 infer_g = expect_g(post_tran)
 print('inferred g:'+str(infer_g))
-
-# check row-sum of M, steady state, and g_bar
-# vectorize beta
-# play with M matrix ...
 
 plt.show()

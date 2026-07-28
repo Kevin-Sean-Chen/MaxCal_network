@@ -1,15 +1,31 @@
 
 data_pkl/
 
-# Ignore all PDF files
+# Generated results
 *.pdf
-
-# Ignore all PKL files
 *.pkl
 
-# Python cache and bytecode files
+# Python caches
 __pycache__/
 *.py[cod]
 *$py.class
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Package builds
+*.egg-info/
+build/
+dist/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Operating-system files
+.DS_Store
+
+# Compiled files
 *.so
 .Python

@@ -4,6 +4,8 @@ Created on Fri May 31 20:11:30 2024
 
 @author: kevin
 """
+from maxcal_network import cos_ang
+
 
 from maxcal_network import spk2statetime, compute_tauC, param2M, eq_constraint, \
                             MaxCal_D, objective_param, compute_min_isi, corr_param, sign_corr, P_frw_ctmc, C_P,\
@@ -108,9 +110,6 @@ def LIF_firing(lt):
 def invf(x):
     output = np.log(x)
     return output
-
-def cos_ang(v1,v2):
-    return np.dot(v1,v2) / (np.linalg.norm(v1)* np.linalg.norm(v2))
 
 # firing = LIF_firing()
 

@@ -4,6 +4,8 @@ Created on Fri Feb  9 21:56:33 2024
 
 @author: kevin
 """
+from maxcal_network import get_stationary
+
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -107,7 +109,7 @@ def general_M(param, N=N):
     M = mask*R*F  
 
     ### compute steady-state
-    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
+    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q
     uu,vv = np.linalg.eig(M.T)
     zeros_eig_id = np.argmin(np.abs(uu-1))
     pi_ss = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
@@ -165,7 +167,7 @@ def edge_flux_data(param, total_time, time_step):
                 posj = np.where(states==jj)[0]
                 flux_ij[ii,jj] = len(np.intersect1d(posi-1, posj))
     flux_ij = flux_ij/total_time
-    return flux_ij  ### need to confirm this calculation...
+    return flux_ij 
 
 def sim_Q(Q, total_time, time_step):
     """
@@ -215,15 +217,6 @@ def MaxCal_D(kij, kij0, param):
                 kl += Pij*(np.log(Pij+eps)-np.log(pi[ii]*kij0[ii,jj]+eps)) \
                       + pi[ii]*kij0[ii,jj] - Pij
     return kl
-
-def get_stationary(M):
-    """
-    get stationary state distribution given a transition matrix M
-    """
-    uu,vv = np.linalg.eig(M.T)
-    zeros_eig_id = np.argmin(np.abs(uu-1))
-    pix = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
-    return np.real(pix)
 
 def obs_given_frw(param, Cp_condition='Peter'):
     """
@@ -332,39 +325,5 @@ plt.title('edge flux',fontsize=20)
 # %%
 print(param_true[:N])
 print(frw_inf[:N])
-
-# %%
-###############################################################################
-# # %% compare constraints!
-# conditions = ['test_edge','Peter','all']
-# frw_inference = np.zeros((3,len(param_true)))
-# for ii in range(3):
-#     Cp_condition = conditions[ii]
-#     observations = obs_given_frw(param_true, Cp_condition)
-#     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-    
-#     # Perform optimization using SLSQP method
-#     P0 = np.ones((nc,nc))  # uniform prior
-#     np.fill_diagonal(P0, np.zeros(nc))
-#     np.fill_diagonal(P0, np.sum(P0,1))
-#     param0 = np.random.rand(len(param_true))*1
-    
-#     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds) 
-    
-#     frw_inf = result.x
-#     frw_inference[ii,:] = frw_inf
-
-# # %%
-# bars = np.concatenate((np.array(param_true)[None,:], frw_inference))
-# num_rows, num_cols = bars.shape
-# bar_positions = np.arange(num_cols)
-# labels = ['true','edge+all', 'edge+pi000', 'edge']
-
-# plt.figure(figsize=(10, 6))
-# for i in range(num_rows):
-#     plt.bar(bar_positions + i * 0.2, (bars[i, :]), width=0.2, label=labels[i])
-    
-# plt.legend(fontsize=15)
-# plt.xlabel('parameters', fontsize=20)
 
 plt.show()

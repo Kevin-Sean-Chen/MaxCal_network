@@ -4,6 +4,8 @@ Created on Fri May 31 00:23:13 2024
 
 @author: kevin
 """
+from maxcal_network import cos_ang
+
 
 from maxcal_network import spk2statetime, compute_tauC, param2M, eq_constraint, \
                             MaxCal_D, objective_param, compute_min_isi, corr_param, sign_corr, P_frw_ctmc, C_P,\
@@ -206,9 +208,6 @@ def coarse_grain_tauC(ijk, tau, C):
           /(tau[word_id(make_bin([j]))]+tau[word_id(make_bin([j,k]))])
     weff = np.log(fexpw/f)
     return weff
-
-def cos_ang(v1,v2):
-    return np.dot(v1,v2) / (np.linalg.norm(v1)* np.linalg.norm(v2))
 
 # %% repeat inference...
 reps = 10

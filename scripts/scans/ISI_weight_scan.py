@@ -5,6 +5,8 @@ Created on Mon Apr 22 17:38:39 2024
 
 @author: kschen
 """
+from maxcal_network import cos_ang
+
 from maxcal_network import spk2statetime, compute_tauC, param2M, eq_constraint, objective_param, compute_min_isi,\
                                 sim_Q, word_id, corr_param
 
@@ -119,9 +121,6 @@ def coarse_grain_tauC(ijk, tau, C):
           /(tau[word_id(make_bin([j]))]+tau[word_id(make_bin([j,k]))])
     weff = np.log(fexpw/f)
     return weff
-
-def cos_ang(v1,v2):
-    return np.dot(v1,v2) / (np.linalg.norm(v1)* np.linalg.norm(v2))
 
 # %% motifs and noise
 motifs = []

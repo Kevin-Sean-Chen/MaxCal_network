@@ -282,7 +282,7 @@ for rr in range(reps): ### repears
             
             ### GLM inference
             wm = GLM_weights(firing, volt, lagt=lagt)
-            inf_gc = np.array([wm[0,1],wm[2,0],wm[0,1],wm[2,1],wm[1,2],wm[0,2]]) ### confirm this is correct!
+            inf_gc = np.array([wm[0,1],wm[2,0],wm[0,1],wm[2,1],wm[1,2],wm[0,2]])
             cceff,_ = pearsonr(inf_gc, true_s)
             R2s[ww, ii, rr, 1] = cceff
             signs[ww, ii, rr, 1] = corr_param(true_s, inf_gc, 'binary')

@@ -26,7 +26,7 @@ spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))  # possible configurations
 nc = len(combinations)  # number of patterns
 
-# %% compute steady-state observations  WRONG!!!!
+# %% compute steady-state observations
 M = np.array([[-u-r0, d, l0, 0],
               [r0, 0, -u-l0, d],
               [u, -d-r1, 0, l1],
@@ -145,7 +145,7 @@ def lamb_beta(beta):
     Pxy = get_joint(vrx,vlx,Pyx)
     return lamb, Pxy, Pyx
 
-def expect_g(Pxy, Gxy=Gxy):
+def expect_g(Pxy, Gxy):
     # put in posterior calculation and stationary probability
     if num_const>1:
         g_bar = np.zeros(num_const)
@@ -256,7 +256,7 @@ plt.xticks(range(len(combinations)), combinations);
 plt.yticks(range(len(combinations)), combinations);
 
 print('observed g:'+str(g_bar))
-infer_g = expect_g(post_joint)
+infer_g = expect_g(post_joint, Gxy)
 print('inferred g:'+str(infer_g))
 
 plt.figure()
@@ -269,11 +269,4 @@ plt.plot(pi_ss,'-o', label=r'$\pi$')
 plt.plot(post_tran@pi_ss,'--o', label='$P\pi$')
 plt.legend(fontsize=20)
 plt.ylim([0,1])
-# %%
-### pseudo-code
-# set prior matix
-# compute M_xy with exp(beta*g(x,y))
-# compute posterior
-# optimize for beta...
-
 plt.show()

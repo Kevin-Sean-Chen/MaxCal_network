@@ -4,6 +4,8 @@ Created on Sat Mar  2 17:50:11 2024
 
 @author: kevin
 """
+from maxcal_network import EP, P_frw_ctmc, get_stationary, param2M
+
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -189,41 +191,6 @@ num_params = int((N*2**N))  # number of parameters in model without refractory a
 nc = 2**N  # number of total states of 3-neuron
 
 # %% counting and ranking analysis
-def param2M(param, N=N, combinations=combinations):
-    """
-    given array of parameters with length N*2**N, network size N, return transition matrix
-    the matrix is a general CTMC form for 
-    """
-    nc = 2**N  # number of states
-    
-    ### idea: M = mask*FR, with mask for ctmc, FR is the rest of the transitions
-    mask = np.ones((nc,nc))  # initialize the tilted matrix
-    FR = mask*1
-    # make the mask
-    for ii in range(nc):
-        for jj in range(nc):
-            # Only allow one flip logic in ctmc
-            if sum(x != y for x, y in zip(combinations[ii], combinations[jj])) != 1:
-                mask[ii,jj] = 0
-    
-    # now make F matrix!
-    kk = 0
-    for ii in range(nc):
-        for jj in range(nc):
-            if mask[ii,jj]==1: #only check those that generates one spike
-                FR[ii,jj] = param[kk]
-                kk = kk+1  # marching forward to fill in f*exp(wij) parts... need to later invert this!!
-    # print(kk)
-    M = mask*FR  
-
-    ### compute steady-state
-    np.fill_diagonal(M, -np.sum(M,1))  # fill diagonal for continuous time Markov transition Q (is this correct?!)
-    uu,vv = np.linalg.eig(M.T)
-    zeros_eig_id = np.argmin(np.abs(uu-1))
-    pi_ss = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
-    
-    return M, np.real(pi_ss)
-
 def compute_tauC(states, times, nc=nc, combinations=combinations):
     """
     given the emperically measured states, measure occupency tau and the transitions C
@@ -267,35 +234,7 @@ def corr_param(param_true, param_infer, mode='binary'):
         correlation_coefficient, _ = pearsonr(true_temp, infer_temp)
         return correlation_coefficient
    
-def EP(kij):
-    """
-    given transition matrix, compute entropy production
-    """
-    pi = get_stationary(kij)
-    # kij = Pij / pi[:,None]
-    eps = 1e-20
-    ep = 0
-    n = len(pi)
-    for ii in range(n):
-        for jj in range(n):
-            Pij = pi[ii]*kij[ii,jj]
-            Pji = pi[jj]*kij[jj,ii]
-            if ii is not jj:
-                ep += Pij*(np.log(Pij+eps)-np.log(Pji+eps))
-    return ep 
-
 # %% computing statistics for infinite data given parameter
-def P_frw_ctmc(param):
-    """
-    get joint probability given parameters (need to change for ctmc??)
-    """
-    k, pi = param2M(param)  # calling asymmetric network
-    nc = len(pi)
-    Pxy = np.zeros((nc,nc))
-    for ii in range(nc):
-        Pxy[ii,:] = k[ii,:]*pi[ii]  # compute joint from transition k and steady-state pi (this is wrong using Q!?)
-    return Pxy
-
 def edge_flux_inf(param):
     """
     compute edge flux with infinite data using pi_i k_ij
@@ -328,16 +267,6 @@ def MaxCal_D(kij, kij0, param):
                       + pi[ii]*kij0[ii,jj] - Pij
     return kl
 
-def get_stationary(M):
-    """
-    get stationary state distribution given a transition matrix M
-    """
-    uu,vv = np.linalg.eig(M.T)
-    zeros_eig_id = np.argmin(np.abs(uu-1))
-    pix = vv[:,zeros_eig_id] / np.sum(vv[:,zeros_eig_id])
-    return np.real(pix)
-
-
 def C_P(P, observations, param, Cp_condition):
     """
     The C(P,f,r,w) function for constraints
@@ -361,7 +290,7 @@ def objective_param(param, kij0):
 def eq_constraint(param, observations, Cp_condition):
     Pxy = P_frw_ctmc(param)
     cp = C_P(Pxy, observations, param, Cp_condition)
-    return 0.5*np.sum(cp**2) ### not sure if this hack is legit, but use MSE for now
+    return 0.5*np.sum(cp**2)
 
 def invf(x):
     output = np.log(x)

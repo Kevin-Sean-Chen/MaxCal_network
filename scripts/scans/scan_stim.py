@@ -16,6 +16,7 @@ import itertools
 from scipy.optimize import minimize
 from scipy.stats import pearsonr
 import matplotlib 
+import pickle
 import random
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
