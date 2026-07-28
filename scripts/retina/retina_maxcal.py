@@ -13,6 +13,7 @@ from statsmodels.tsa.stattools import acf
 import random
 import scipy.io
 import numpy as np
+from pathlib import Path
 from matplotlib import pyplot as plt
 import itertools
 from scipy.optimize import minimize
@@ -21,8 +22,10 @@ import matplotlib
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+
 # %% loading retina!
-mat_data = scipy.io.loadmat('C:/Users/kevin/Downloads/Data_processed.mat')
+mat_data = scipy.io.loadmat(DATA_DIR / "Data_processed.mat")
 dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 nid = 34  # neuron example
 reps = 62 #len(mat_data['spike_times'][0][dataset][0])  #62, 50

@@ -14,6 +14,7 @@ Created on Sun Jun 21 01:16:58 2026
 import itertools
 import numpy as np
 import scipy.io
+from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib
 import pickle
@@ -22,6 +23,8 @@ matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
 from maxcal_network import spk2statetime, compute_tauC, word_id
+
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
 # %% setup
@@ -262,7 +265,7 @@ def infer_cg12_cg21(tau, C):
 
 # %% main analysis ############################################################
 ###############################################################################
-mat_path = "C:/Users/kevin/Downloads/Data_processed.mat"
+mat_path = DATA_DIR / "Data_processed.mat"
 dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 
 dt = 1.0
@@ -386,7 +389,7 @@ for job in pair_jobs:
 # %% if we just load pkl
 load = False
 if load==True:
-    with open("retina_triplet_sampling.pkl", "rb") as f:
+    with open(DATA_DIR / "retina_triplet_sampling.pkl", "rb") as f:
         data = pickle.load(f)
     
     all_samples   = data["all_samples"]

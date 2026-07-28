@@ -10,6 +10,7 @@ from maxcal_network import spk2statetime, compute_tauC, param2M, eq_constraint, 
 
 import scipy.io
 import numpy as np
+from pathlib import Path
 from matplotlib import pyplot as plt
 import itertools
 from scipy.optimize import minimize
@@ -18,6 +19,8 @@ import matplotlib
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 import pickle
+
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 np.random.seed(1)
 
@@ -266,7 +269,7 @@ plt.subplot(133); plt.semilogx(scan_x, coss.T,'-o', label=['EI', 'comm', 'conv']
 
 # %% load data
 def plot_perturbed(purt='noise'):
-    fname = 'C:/Users/kevin/Documents/github/MaxCal_network/perturbations_'+purt+'.pkl'
+    fname = DATA_DIR / f"perturbations_{purt}.pkl"
     with open(fname, 'rb') as f:
         loaded_data = pickle.load(f)
     coss, scan_x = loaded_data['coss'], loaded_data['scan_x']

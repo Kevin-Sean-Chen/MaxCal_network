@@ -23,6 +23,7 @@ Requirements:
 from brian2 import *
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 
 save_pdf = False  # Set to True to save figures as PDF instead of showing interactively
 
@@ -40,7 +41,8 @@ duration = 10.0*2 * second
 # Inference Max Cal parameters
 # ----------------------------
 CACHE_MAXCAL = False
-CACHE_PATH = "maxcal_inference_cache.pkl"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+CACHE_PATH = DATA_DIR / "maxcal_inference_cache.pkl"
 
 ### notes for good parameters ###
 # optimal window size

@@ -10,6 +10,7 @@ from maxcal_network import spk2statetime, compute_tauC, param2M, eq_constraint, 
 
 import scipy.io
 import numpy as np
+from pathlib import Path
 from matplotlib import pyplot as plt
 import itertools
 from scipy.optimize import minimize
@@ -18,6 +19,8 @@ import matplotlib
 import random
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
+
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 np.random.seed(1) #1, 37
 
@@ -312,15 +315,15 @@ plt.show()
 
 
 # %% loading all
-fname = 'C:/Users/kevin/Documents/github/MaxCal_network/remedy_stim_Ionly.pkl'
+fname = DATA_DIR / "remedy_stim_Ionly.pkl"
 with open(fname, 'rb') as f:
     loaded_data = pickle.load(f)
 coss_Ionly, scan_x = loaded_data['coss'], loaded_data['scan_x']
-fname = 'C:/Users/kevin/Documents/github/MaxCal_network/remedy_stim_Eonly.pkl'
+fname = DATA_DIR / "remedy_stim_Eonly.pkl"
 with open(fname, 'rb') as f:
     loaded_data = pickle.load(f)
 coss_Eonly, scan_x = loaded_data['coss'], loaded_data['scan_x']
-fname = 'C:/Users/kevin/Documents/github/MaxCal_network/remedy_stim_rand.pkl'
+fname = DATA_DIR / "remedy_stim_rand.pkl"
 with open(fname, 'rb') as f:
     loaded_data = pickle.load(f)
 coss_rand, scan_x = loaded_data['coss'], loaded_data['scan_x']

@@ -11,6 +11,7 @@ from maxcal_network import spk2statetime, compute_tauC, param2M, eq_constraint, 
 from statsmodels.tsa.stattools import acf
 
 import numpy as np
+from pathlib import Path
 from matplotlib import pyplot as plt
 import itertools
 from scipy.optimize import minimize
@@ -18,6 +19,8 @@ from scipy.stats import pearsonr
 import matplotlib 
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
+
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
 # %% LIF model
@@ -261,7 +264,7 @@ isi_bins = np.arange(0,1,.05)*500
 # %% load data
 import pickle
 # Load variables from file
-with open('weight_isi_scan3.pkl', 'rb') as f:
+with open(DATA_DIR / "weight_isi_scan3.pkl", 'rb') as f:
     loaded_data = pickle.load(f)
 weight_isi_scan = loaded_data*1 
 

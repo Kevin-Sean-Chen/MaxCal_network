@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib 
 import scipy
+from pathlib import Path
 matplotlib.rc('xtick', labelsize=20) 
 matplotlib.rc('ytick', labelsize=20)
 
@@ -16,9 +17,11 @@ import numpy as np
 import scipy.io
 import matplotlib.pyplot as plt
 
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+
 
 # %% loading retina
-mat_path = 'C:/Users/kevin/Downloads/Data_processed.mat'
+mat_path = DATA_DIR / "Data_processed.mat"
 dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 
 mat_data = scipy.io.loadmat(mat_path)

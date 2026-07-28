@@ -11,6 +11,7 @@ from maxcal_network import spk2statetime, compute_tauC, param2M, eq_constraint, 
 
 import scipy.io
 import numpy as np
+from pathlib import Path
 from matplotlib import pyplot as plt
 import itertools
 from scipy.optimize import minimize
@@ -22,10 +23,12 @@ matplotlib.rc('ytick', labelsize=20)
 # %% load data
 import pickle
 
+DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+
 motif_type = 'common'  # common, chain, cyclic
 
-# with open('data_pkl/motif_'+motif_type+'.pkl', 'rb') as f:  
-with open('data_pkl/C4_3neuron_LIF_match.pkl', 'rb') as f:  
+# with open(DATA_DIR / f"motif_{motif_type}.pkl", 'rb') as f:
+with open(DATA_DIR / "C4_3neuron_LIF_match.pkl", 'rb') as f:
     loaded_data = pickle.load(f)
     
 firing = loaded_data['firing']

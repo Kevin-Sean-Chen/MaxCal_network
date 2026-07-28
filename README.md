@@ -75,7 +75,7 @@ Supporting-information scripts:
 
 ## Data
 
-Use `data/` as the target location for required `.pkl` and `.mat` files. Benchmark scripts already read from this folder. Some other research scripts still contain legacy paths that need normalization.
+Place required `.pkl` and `.mat` files in `data/`. All active data loaders resolve this folder from the repository location.
 
 - [`data/required_files.txt`](data/required_files.txt) lists expected input files.
 - [`data/pickle_save_sources.txt`](data/pickle_save_sources.txt) maps figure data to source scripts.
