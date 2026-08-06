@@ -269,6 +269,7 @@ dt = 1.0
 window_ms = 20 ### 20,  40,80
 window = int(window_ms / dt)
 top_K = 10  ### -1 for all
+pick_K = np.arange(0,53,5, dtype=int)
 
 spk_data, spk_ids = load_dataset(mat_path, dataset)
 
@@ -276,7 +277,7 @@ spk_data, spk_ids = load_dataset(mat_path, dataset)
 # neuron 1 = ID 3
 # neuron 2 = ID 34
 # neuron 3 = ID 13
-base_triplet = np.array([3, 13, 34])### np.array([3, 34, 13])
+base_triplet = np.array([3, 34, 13])### np.array([3, 34, 13])
 only_pair12 = True
 
 sorted_cell_ids, sorted_counts = count_spikes_by_cell(spk_ids)
@@ -335,7 +336,8 @@ for job in pair_jobs:
     reverse_label = job["reverse_label"]
     
     ### top K selection, to speed up #####
-    possible_third_neurons = [nid for nid in list_of_ID if nid not in pair][:top_K]
+    possible_third_neurons = [nid for nid in list_of_ID if nid not in pair]###[:topK]
+    possible_third_neurons = [possible_third_neurons[i] for i in pick_K] # using specific picks
 
     print("\nSampling pair:", pair)
     print("Forward:", forward_label, "Reverse:", reverse_label)
@@ -391,7 +393,7 @@ if load==True:
     
     all_samples   = data["all_samples"]
     all_third_ids = data["all_third_ids"]
-    # all_w_primes  = data['all_w_primes']
+    # all_w_primes  = data['all_w_primes'] ### for w'
     base_triplet  = data["base_triplet"]
     window_ms     = data["window_ms"]
     dataset       = data["dataset"]
@@ -402,12 +404,13 @@ if load==True:
 # %% convert to arrays
 for key in all_samples:
     all_samples[key] = np.asarray(all_samples[key], dtype=float)
-    # all_w_primes[key] = np.asarray(all_w_primes[key], dtype=float)
+    all_w_primes[key] = np.asarray(all_w_primes[key], dtype=float) ### for w'
     all_third_ids[key] = np.asarray(all_third_ids[key])
 
 
 # %% MAIN PLOT: six wij bars with error bars over sampled third neurons
-wij_order = [label for label in ["w12", "w13", "w21", "w23", "w32", "w31"] if label in all_samples]
+# wij_order = [label for label in ["w12", "w13", "w21", "w23", "w32", "w31"] if label in all_samples]
+wij_order = [label for label in ["w12", "w21"] if label in all_samples] ### for w'
 
 means = np.array([np.nanmean(all_samples[k]) for k in wij_order])
 sems = np.array([
@@ -432,7 +435,8 @@ plt.show()
 
 
 # %% DEBUG PLOT: raw samples across third neurons
-wij_order_sub = ['w12', 'w13', 'w21', 'w23', 'w31', 'w32']
+# wij_order_sub = ['w12', 'w13', 'w21', 'w23', 'w31', 'w32']
+wij_order_sub = ['w12', 'w21'] ### for w'
 plt.figure(figsize=(12, 8))
 
 for idx, key in enumerate(wij_order_sub):
@@ -442,13 +446,13 @@ for idx, key in enumerate(wij_order_sub):
     order = np.argsort(xvals)
     xvals = xvals[order]
     plt.plot(xvals, all_samples[key][order], "o", alpha=0.8)
-    # plt.plot(xvals, all_w_primes[key][order], "ro", alpha=0.8)
+    plt.plot(xvals, all_w_primes[key][order], "ro", alpha=0.8) ### for w'
     plt.axhline(0, color="k", linewidth=0.5)
     plt.xlabel("sampled third neuron rank by firing rate", fontsize=11)
     plt.ylabel("weight", fontsize=11)
     plt.title(key, fontsize=14)
     plt.grid(True, alpha=0.3)
-    plt.ylim([-6.5,2.5])
+    # plt.ylim([-6.5,2.5])
 ### label o as wij and ro as wij-prime
 # plt.legend(["wij", "wij-prime"], loc="upper right", fontsize=10)
 plt.tight_layout()

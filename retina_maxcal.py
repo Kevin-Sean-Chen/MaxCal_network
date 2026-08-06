@@ -51,7 +51,8 @@ nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three 
 
 nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
 # nids = np.array([40,1,31])   # for SI plot
-# nids = np.array([1,42,34]) ### testing
+nids = np.array([31,13,2]) ### highest
+# nids = np.array([11, 12, 46]) ### lowest
 
 # %% plot three neuron for Peter
 trial_id = 0  
