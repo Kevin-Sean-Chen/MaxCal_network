@@ -188,7 +188,7 @@ for rr in range(reps):
         for ii in range(len(n_s)):
             print(ww); print(ii)
             S = Wij *fault_w[ww] #*w_s[ii]  #
-            firing = LIF_firing(S, fault_n[ww]*1+n_s[ii]*1, syn_delay=d_s[ii]*0+1, syn_ratio=None, lt=lt)  ### tune noise, delay, or ratio
+            firing = LIF_firing(S, fault_n[ww]*1+n_s[ii]*0, syn_delay=d_s[ii]*1+1, syn_ratio=None, lt=lt)  ### tune noise, delay, or ratio
             # minisi = compute_min_isi(firing)
             adapt_window = 150 #int(minisi*10)  #100
             spk_states, spk_times = spk2statetime(firing, adapt_window)  # embedding states

@@ -4,6 +4,7 @@ data_pkl/
 # Generated results
 *.pdf
 *.pkl
+!data/*.pkl
 
 # Python caches
 __pycache__/
