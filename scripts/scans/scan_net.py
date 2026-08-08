@@ -243,28 +243,17 @@ for ii in range(0,3):
     plt.subplot(132); plt.errorbar(scan_x, np.mean(signs[ii,:,:],1), np.std(signs[ii,:,:],1)); plt.title('sign'); #plt.xscale('log');
     plt.xlabel('difference',fontsize=20)
     plt.subplot(133); plt.errorbar(scan_x, np.mean(coss[ii,:,:],1), np.std(coss[ii,:,:],1)); plt.title('cos'); #plt.xscale('log');
+plt.show()
 
 
 # %%
-# scan_x = h_s*1
-scan_x = np.array([1, 2, 4, 8, 16])
-plt.figure()
-plt.subplot(131); plt.semilogx(scan_x, R2s.T,'-o', label=['EI', 'comm', 'conv']); plt.title('R2'); plt.legend()
-plt.subplot(132); plt.semilogx(scan_x, signs.T,'-o', label=['EI', 'comm', 'conv']); plt.title('signed corr');plt.xlabel('repeats...')
-plt.subplot(133); plt.semilogx(scan_x, coss.T,'-o', label=['EI', 'comm', 'conv']); plt.title('cosine')
-
-#### TO-DO #####
-# tune untill the initial point is close, by tuning weights and maybe noise
-
-# %% plot isi
+# # scan_x = h_s*1
+# scan_x = np.array([1, 2, 4, 8, 16])
 # plt.figure()
-# # for ii in range(5):
-#     # plt.hist(full_isi[0][],100)
-
-# plt.hist(full_isi[2][-1],20)
-# plt.yscale('log')
-# plt.xlabel('isi (0.1 ms)',fontsize=20); plt.ylabel('counts',fontsize=20)
-
+# plt.subplot(131); plt.semilogx(scan_x, R2s.T,'-o', label=['EI', 'comm', 'conv']); plt.title('R2'); plt.legend()
+# plt.subplot(132); plt.semilogx(scan_x, signs.T,'-o', label=['EI', 'comm', 'conv']); plt.title('signed corr');plt.xlabel('repeats...')
+# plt.subplot(133); plt.semilogx(scan_x, coss.T,'-o', label=['EI', 'comm', 'conv']); plt.title('cosine')
+# plt.show()
 
 
 # %% load data
@@ -287,15 +276,19 @@ def plot_perturbed(purt='noise'):
 
 plot_perturbed('weight'); plt.xlabel('weight'); plt.ylabel('cos'); plt.xscale('log')   
 # plt.savefig("weight"+".pdf", format="pdf", bbox_inches="tight")
+plt.show()
  
 plot_perturbed('noise'); plt.xlabel('noise'); plt.ylabel('cos'); plt.xscale('log')
 # plt.savefig("noise"+".pdf", format="pdf", bbox_inches="tight")
+plt.show()
 
 plot_perturbed('delay'); plt.xlabel('delay'); plt.ylabel('cos'); #plt.xscale('log')
 # plt.savefig("delay"+".pdf", format="pdf", bbox_inches="tight")
+plt.show()
 
 plot_perturbed('diff'); plt.xlabel('diff'); plt.ylabel('cos'); plt.xscale('log')
 # plt.savefig("diff"+".pdf", format="pdf", bbox_inches="tight")
+plt.show()
 
 # Optional pickle save example.
 # import pickle
@@ -303,5 +296,3 @@ plot_perturbed('diff'); plt.xlabel('diff'); plt.ylabel('cos'); plt.xscale('log')
 # data = {"coss": coss, "scan_x": scan_x, "reps": reps, "lt": lt}
 # with open(filename, "wb") as file:
 #     pickle.dump(data, file)
-
-plt.show()
