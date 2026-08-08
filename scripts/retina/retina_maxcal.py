@@ -54,7 +54,7 @@ nids = np.random.choice(cell_ids, size=N, replace=False)  # random select three 
 
 nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
 # nids = np.array([40,1,31])   # for SI plot
-# nids = np.array([1,42,34]) ### testing
+nids = np.array([11,12,46]) ### testing
 
 # %% plot three neuron for Peter
 trial_id = 0  
@@ -289,6 +289,7 @@ M_inf, pi_inf = param2M(param_temp, N, combinations)  #dof_cut
 np.fill_diagonal(M_inf, np.zeros(nc))
 ############### direct computation
 M_inf = (C_/tau_[:,None])
+print('M_inf: ', M_inf)
 ##############
 f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
 w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
@@ -418,14 +419,16 @@ plt.bar(categories, inf_w, width=bar_width)
 plt.plot(categories, bar_positions_group2*0, 'k')
 plt.ylabel('inferred', fontsize=20)
 plt.ylim([-6.5,2.5])
-# plt.ylim([-4.5, 2])
+plt.ylim([-9.5, 2.5])
+print('inferred: ', inf_w)
 
 plt.subplot(212)
 plt.bar(bar_positions_group1, np.array([weff12,weff13,weff21,weff23,weff32,weff31])+0, width=bar_width)
 plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
 plt.ylabel('coarse grain', fontsize=20)
 plt.ylim([-6.5,2.5])
-# plt.ylim([-4.5,2])
+# plt.ylim([-4.5,2.5])
+plt.show()
 # plt.savefig('retina_infer_CG_B20_full.pdf')
 
 # %% ideas

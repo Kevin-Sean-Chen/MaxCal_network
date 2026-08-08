@@ -271,7 +271,7 @@ dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 dt = 1.0
 window_ms = 20 ### 20,  40,80
 window = int(window_ms / dt)
-top_K = 10  ### -1 for all
+top_K = 2  ### -1 for all
 
 spk_data, spk_ids = load_dataset(mat_path, dataset)
 
@@ -283,6 +283,10 @@ base_triplet = np.array([3, 13, 34])### np.array([3, 34, 13])
 only_pair12 = True
 
 sorted_cell_ids, sorted_counts = count_spikes_by_cell(spk_ids)
+
+print("Sorted cell IDs by spike count:", sorted_cell_ids)
+print("Sorted cell counts:", sorted_counts)
+
 list_of_ID = sorted_cell_ids
 id_to_firing_rank = {nid: idx + 1 for idx, nid in enumerate(list_of_ID)}
 
