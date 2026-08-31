@@ -326,28 +326,7 @@ plt.figure()
 plt.imshow(M_inf, aspect='auto')
 plt.colorbar()
 
-# %%
-# param_order = np.arange(1, len(param_temp)+1)
-# M_order,_ = param2M(param_order)
-
-# M = np.array([[0,    f3,   f2,   0,              f1,   0,               0,               0],
-#               [r3,   0,    0,    f2*np.exp(w32), 0,    f1*np.exp(w31),  0,               0],
-#               [r2,   0,    0,    f3*np.exp(w23), 0,    0,               f1*np.exp(w21),  0],
-#               [0,    r2,   r3,   0,              0,    0,               0,               f1*np.exp(w231)],
-#               [r1,   0,    0,    0,              0,    f3*np.exp(w13),  f2*np.exp(w12),  0],
-#               [0,    r1,   0,    0,              r3,   0,               0,               f2*np.exp(w132)],
-#               [0,    0,    r1,   0,              r2,   0,               0,               f3*np.exp(w123)],
-#               [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
-
-# def find_state(state):
-#     for ii in range(len(combinations)):
-#         if combinations[ii]==state:
-#             idx = ii
-#     return idx
-# f1,f2,f3,f4,f5 = M_inf[0,find_state((1,0,0,0,0))], M_inf[0,find_state((0,1,0,0,0))],\
-#             M_inf[0,find_state((0,0,1,0,0))], M_inf[0,find_state((0,0,0,1,0))], M_inf[0,find_state((0,0,0,0,1))]
-
-##### hijacking again ####
+##### direct calculation ####
 M_inf = (C_/tau_[:,None])
  #########################
 f1,f2,f3 = M_inf[0,1], M_inf[0,2], M_inf[0,4]
@@ -414,32 +393,6 @@ plt.imshow(synaptic_weights)
 plt.colorbar()
 
 
-# %% loading past data
-# import pickle
-
-
-# with open('C4_3neuron_Iwindow.pkl', 'rb') as f:
-#     loaded_data = pickle.load(f)
-
-# print("Variables loaded successfully:")
-# print(loaded_data['corr_coeff'])
-
-# print(corr_param(loaded_data['true_w'], loaded_data['inf_w'], 'binary'))
-
-# inf_w_ = loaded_data['inf_w']
-# plt.figure()
-# plt.subplot(211)
-# plt.bar(bar_positions_group1, [S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]], width=bar_width)
-# plt.bar(np.arange(4),[S[1,0],S[2,0],S[0,1],S[2,1]],width=bar_width,color='orange')
-# plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
-# plt.ylabel('true weights', fontsize=20)
-# plt.subplot(212)
-# plt.bar(bar_positions_group1, inf_w_, width=bar_width)
-# plt.bar(np.arange(4), inf_w_[:4], width=bar_width,color='orange') ## for E cells
-# plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
-# plt.ylabel('MaxCal inferred', fontsize=20)
-# plt.savefig('3_of_5_'+str(h_str)+'.pdf')
-
 # %% plot spikes
 lt_plt = int(1500/dt)
 plt.figure()
@@ -447,21 +400,4 @@ for tt in range(lt_plt-1):
     plt.plot(firing[tt][0], firing[tt][1],'k.')
 plt.xlim([0,15000])
 plt.ylim([-0.1, 2.1])
-# plt.savefig('LIF_sSpk_train.pdf')
-# plt.xlim([10000,20000])
-
-# Optional pickle save example.
-# import pickle
-# filename = "C4_3_driven_LIF_match3.pkl"
-# data = {
-#     "4_wij": synaptic_weights,
-#     "firing": firing,
-#     "M_inf": M_inf,
-#     "inf_w": inf_w,
-#     "true_w": true_wij,
-#     "S": S,
-# }
-# with open(filename, "wb") as file:
-#     pickle.dump(data, file)
-
 plt.show()

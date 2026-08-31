@@ -311,27 +311,6 @@ plt.figure()
 plt.imshow(M_inf, aspect='auto')
 plt.colorbar()
 
-# %%
-# param_order = np.arange(1, len(param_temp)+1)
-# M_order,_ = param2M(param_order)
-
-# M = np.array([[0,    f3,   f2,   0,              f1,   0,               0,               0],
-#               [r3,   0,    0,    f2*np.exp(w32), 0,    f1*np.exp(w31),  0,               0],
-#               [r2,   0,    0,    f3*np.exp(w23), 0,    0,               f1*np.exp(w21),  0],
-#               [0,    r2,   r3,   0,              0,    0,               0,               f1*np.exp(w231)],
-#               [r1,   0,    0,    0,              0,    f3*np.exp(w13),  f2*np.exp(w12),  0],
-#               [0,    r1,   0,    0,              r3,   0,               0,               f2*np.exp(w132)],
-#               [0,    0,    r1,   0,              r2,   0,               0,               f3*np.exp(w123)],
-#               [0,    0,    0,    r1,             0,    r2,              r3,              0]]) 
-
-# def find_state(state):
-#     for ii in range(len(combinations)):
-#         if combinations[ii]==state:
-#             idx = ii
-#     return idx
-# f1,f2,f3,f4,f5 = M_inf[0,find_state((1,0,0,0,0))], M_inf[0,find_state((0,1,0,0,0))],\
-#             M_inf[0,find_state((0,0,1,0,0))], M_inf[0,find_state((0,0,0,1,0))], M_inf[0,find_state((0,0,0,0,1))]
-
 f1,f2,f3 = M_inf[0,1], M_inf[0,2], M_inf[0,4]
 # w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
 # w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
@@ -381,55 +360,4 @@ plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=
 plt.figure()
 plt.imshow(synaptic_weights)
 plt.colorbar()
-
-
-# %% loading past data
-# import pickle
-
-# h_str = 40  #2,10,20,30,40
-# # Load variables from file
-# with open('C5_3neuron_'+str(h_str)+'.pkl', 'rb') as f:
-#     loaded_data = pickle.load(f)
-
-# print("Variables loaded successfully:")
-# print(loaded_data['corr_coeff'])
-
-# print(corr_param(loaded_data['true_w'], loaded_data['inf_w'], 'binary'))
-
-# print(cos_ang(loaded_data['true_w'], loaded_data['inf_w']))
-
-# inf_w_ = loaded_data['inf_w']
-# plt.figure()
-# plt.subplot(211)
-# plt.bar(bar_positions_group1, [S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]], width=bar_width)
-# plt.bar(np.arange(4),[S[1,0],S[2,0],S[0,1],S[2,1]],width=bar_width,color='orange')
-# plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
-# plt.ylabel('true weights', fontsize=20)
-# plt.subplot(212)
-# plt.bar(bar_positions_group1, inf_w_, width=bar_width)
-# plt.bar(np.arange(4), inf_w_[:4], width=bar_width,color='orange') ## for E cells
-# plt.plot(bar_positions_group1, bar_positions_group2*0, 'k')
-# plt.ylabel('MaxCal inferred', fontsize=20)
-# plt.savefig('3_of_5_'+str(h_str)+'.pdf')
-
-# %%
-# hidden_str = np.array([20,15,10,5,2])/20
-# hidden_str = np.array([40,30,20,10,2])/20
-# plt.savefig('3_of_5_error_cos.pdf')
-
-# Optional pickle save example.
-# import pickle
-# filename = "C5_3neuron_" + str(hidden_stength) + ".pkl"
-# data = {
-#     "5_wij": synaptic_weights,
-#     "3_wij": synaptic_3neuron,
-#     "firing": firing,
-#     "M_inf": M_inf,
-#     "inf_w": inf_w,
-#     "true_w": true_wij,
-#     "corr_coeff": correlation_coefficient,
-# }
-# with open(filename, "wb") as file:
-#     pickle.dump(data, file)
-
 plt.show()

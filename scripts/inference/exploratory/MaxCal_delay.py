@@ -468,28 +468,4 @@ plt.plot(eff_infer, bar_positions_group2*0, 'k')
 plt.bar(np.arange(4),eff_vec[:4],width=bar_width,color='orange')
 plt.ylabel('effective coupling', fontsize=10)
 # plt.savefig('infer_eff.pdf')
-
-
-# %% load data
-# import pickle
-
-# with open('LIF_3neuron.pkl', 'rb') as f:
-#     loaded_data = pickle.load(f)
-
-# print("Variables loaded successfully:")
-
-# Optional pickle save example.
-# import pickle
-# filename = "LIF_3neuron_new5.pkl"
-# data = {
-#     "synaptic_weights": synaptic_weights,
-#     "param_temp": param_temp,
-#     "firing": firing,
-#     "M_inf": M_inf,
-#     "inf_w": inf_w,
-#     "true_w": true_wij,
-# }
-# with open(filename, "wb") as file:
-#     pickle.dump(data, file)
-
 plt.show()

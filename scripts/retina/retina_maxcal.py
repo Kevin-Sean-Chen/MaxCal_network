@@ -67,11 +67,6 @@ for nn in range(3):
     pos = np.where(spki==ni)[0]
     plt.plot(spkt[pos], np.ones(len(pos))+nn,'k.')
     plt.xlim([0,15000])
-    # plt.xlim([8000,9000])
-    # plt.xlim([4000,5000])
-    # plt.xlim([3200,3700])
-# plt.savefig('retina_spk_exp.pdf')
-
 # %%
 # check isi
 # the data is spike timing with 10kHz sampling, so .1ms time resolution
@@ -129,13 +124,6 @@ for dd in range(1,2):   #### range(1,2) for bar #try all data!!
                 firing.append([tt+0*spike_indices, spike_indices])  ## constuct firing tuple
         
             firing_s.append(firing)
-
-# %% checking raster
-# plt.figure()
-# temp = firing_s[0]
-# for ii in range(len(temp)):
-#     if len(temp[ii][1])>0:
-#         plt.plot(ii, temp[ii][1], 'k.')
         
 # %% some tests!!
 window = int(20/dt)  # .1ms window
@@ -159,49 +147,6 @@ plt.figure()
 plt.plot(spk_states,'-o')
 print(tau_all)
 print(C_all)
-
-# %% building constraints
-# num_params = int((N*2**N))  # number of parameters in model without refractory assumption
-# nc = 2**N  # number of total states of 3-neuron
-# dofs = num_params*1
-# dofs_all = nc**2 + nc
-# target_dof = dofs + nc
-# kls = np.zeros(target_dof) # measure KL
-# Cp_condition = np.zeros(dofs_all)  # mask... problem: this is ncxnc not dof???
-# rank_tau = np.argsort(tau_all)[::-1]  # ranking occupency
-# rank_C = np.argsort(C_all.reshape(-1))[::-1]  # ranking transition
-# # time_norm = len(np.concatenate(spk_time_all))
-# tau_, C_ = tau_all/lt/reps, C_all/lt/reps# time_norm  #lt/reps # correct normalization
-# # tau_, C_ = tau/lt/1, C/lt/1 # correct normalization
-# observations = np.concatenate((tau_, C_.reshape(-1)))  # observation from simulation!
-# # observations = np.concatenate((C_.reshape(-1), tau_))
-
-# P0 = np.ones((nc,nc))  # uniform prior
-# np.fill_diagonal(P0, np.zeros(nc))
-# np.fill_diagonal(P0, -np.sum(P0,1))
-# ii = 0
-# ### scan through all dof
-# while ii < target_dof:
-#     ### work on tau first
-#     if ii<nc-1:
-#         Cp_condition[rank_tau[ii]] = 1
-#     else:
-#         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
-    
-#     ### run max-cal!
-#     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-#     bounds = [(.0, 100)]*num_params
-
-#     # Perform optimization using SLSQP method
-#     param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-#     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-    
-#     # computed and record the corresponding KL
-#     param_temp = result.x
-#     Pyx,_ = param2M(param_temp)
-#     kls[ii] = MaxCal_D(Pyx, P0, param_temp)
-#     print(ii)    
-#     ii = ii+1
 
 # %% full-dof for checking performance
 num_params = int((N*2**N))  # number of parameters in model without refractory assumption
@@ -259,30 +204,6 @@ result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraint
 param_temp = result.x
 
 # %%
-# plt.figure()
-# plt.plot(np.log(kls[:]),'-o')
-# plt.xlabel('ranked dof', fontsize=20)
-# plt.ylabel('KL', fontsize=20)
-# plt.title('retina', fontsize=20)
-# # plt.savefig('retina_KL.pdf')
-# # plt.ylim([0,10])
-
-# %% test cutoff
-# dof_cut = 32
-# ii = 0
-# while ii < dof_cut:
-#     if ii<nc-1:
-#         Cp_condition[rank_tau[ii]] = 1
-#     else:
-#         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
-#     ii+=1
-# constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-# bounds = [(.0, 100)]*num_params
-# param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-# result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-# param_cut = result.x
-
-# %%
 spins = [0,1]  # binary patterns
 combinations = list(itertools.product(spins, repeat=N))
 M_inf, pi_inf = param2M(param_temp, N, combinations)  #dof_cut
@@ -321,37 +242,6 @@ plt.semilogy(ws, phis,'o', label='neuron3')
 # plt.semilogy(ws[:3], phis[:3])
 plt.xlabel('x',fontsize=20); plt.ylabel('phi',fontsize=20); plt.legend(fontsize=15)
 # plt.savefig('retina_NL.pdf')
-
-# %% scan effective model
-# corr_final = np.zeros(target_dof)
-# r2s = corr_final*0
-# sign = corr_final*0
-# ii = 0
-# Cp_condition = np.zeros(dofs_all)
-# while ii < target_dof:
-#     ### work on tau first
-#     if ii<nc-1:
-#         Cp_condition[rank_tau[ii]] = 1
-#     else:
-#         Cp_condition[rank_C[ii-(nc-1)]+(nc)] = 1
-    
-#     ### run max-cal!
-#     constraints = ({'type': 'eq', 'fun': eq_constraint, 'args': (observations, Cp_condition)})
-#     bounds = [(.0, 100)]*num_params
-#     param0 = np.ones(num_params)*.1 + np.random.rand(num_params)*0.0
-#     result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraints=constraints, bounds=bounds)
-#     param_dof = result.x
-#     r2s[ii] = corr_param(param_temp, param_dof, '0')  # non-biniary version!
-#     sign[ii] = sign_corr(param_temp, param_dof)
-#     print(ii)    
-#     ii = ii+1
-
-# %%
-# plt.figure()
-# plt.plot(r2s,'-o', label='corr')
-# plt.plot(sign,'-o', label='signed corr')
-# plt.xlabel('dof', fontsize=20); plt.legend(fontsize=20); plt.title('retina (compared to full dof)', fontsize=20)
-# # plt.savefig('retina_dof.pdf')
 
 # %% recover transitions from dof
 def dof2trans(ranked_C, cutoff):
@@ -429,21 +319,7 @@ plt.ylabel('coarse grain', fontsize=20)
 plt.ylim([-6.5,2.5])
 # plt.ylim([-4.5,2.5])
 plt.show()
-# plt.savefig('retina_infer_CG_B20_full.pdf')
 
-# %% ideas
-# window test
-# response function
-# effective model
-# try 3 out of 5 neurons...
-
-# %% new notes for 4/19
-# modify fig7, revisit large window for Appendix
-#######
-# generate spike train from fitted rates
-# measure ISI/IBI from the CTMC generated spike train (save MaxCal!)
-
-# %%
 ###############################################################################
 # %% custom M matrix
 tau_new, C_new = (tau_all-0)/new_lt, (C_all-C_base*0)/new_lt*1
@@ -592,7 +468,7 @@ plt.plot(bb,aa_retina, label='retina')
 plt.yscale('log'); plt.legend(fontsize=20); plt.xlabel('ISI (ms)', fontsize=20)
 # plt.savefig('retina_ctmc_ISI.pdf')
 
-# %% Max Ent!!!
+# %% Max Ent
 ###############################################################################
 # %%
 def MaxEnt_states(firing, window, lt=lt, N=N, combinations=combinations):

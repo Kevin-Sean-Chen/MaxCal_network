@@ -162,167 +162,100 @@ isi_bins = np.arange(0,1,.05)*500
 
 # %% looping
 ###############################################################################
-# weight_isi_scan = []
-# KL_isi = np.zeros((len(motifs), len(noise_amps)))
-# weight_corr = KL_isi*1
-# cg_corr = KL_isi*1
+weight_isi_scan = []
+KL_isi = np.zeros((len(motifs), len(noise_amps)))
+weight_corr = KL_isi*1
+cg_corr = KL_isi*1
 
-# for mm in range(len(motifs)):
-#     row = []
-#     for ni in range(len(noise_amps)):
-#         print('m:'+str(mm) + ', n:'+str(ni))
-#         ### generate LIF spikes
-#         S = motifs[mm]*1
-#         firing, spike_id, spike_times = LIF_motifs(S, noise_amps[ni])
-        
-#         ### measure LIF isi
-#         LIF_isi = []
-#         for nn in range(N): #(N):
-#             pos = np.where(np.array(spike_id)==nn)[0]
-#             spks = np.array(spike_times)[pos]
-#             if len(spks)>2:
-#                 spks = spks[np.where(spks<lt)[0]]
-#                 isis = np.diff(spks)/dt
-#                 LIF_isi.append(isis)
-#         LIF_isi = np.concatenate(LIF_isi, axis=0)
-
-#         ### do inference with CTMC
-#         spk_states, spk_times = spk2statetime(firing, adapt_window, lt=lt)  # embedding states
-#         tau,C = compute_tauC(spk_states, spk_times)  # emperical measurements
-#         tau_, C_ = tau/lt, C/lt # correct normalization
-
-#         ### infering M
-#         M_inf = (C_/tau_[:,None]) ### hijack here
-#         np.fill_diagonal(M_inf, np.zeros(nc))
-#         Q = M_inf*1 
-#         np.fill_diagonal(Q, -np.sum(Q,1))
-        
-#         ### reconstruct CTMC spikes
-#         reps_ctmc = 200        
-#         ctmc_data, ctmc_ids = [], []
-#         for rr in range(reps_ctmc):
-#             ctmc_s, ctmc_t = sim_Q(Q, 100000, 1)
-#             ctmc_spkt, ctmc_spki = [],[]
-#             btt = []
-#             for tt in range(1, len(ctmc_t)):
-#                 state = ctmc_s[tt]
-#                 time = ctmc_t[tt]
-#                 word = np.array(combinations[state])
-#                 for nn in range(N):
-#                     if word[nn]==1:
-#                         ctmc_spkt.append(time)
-#                         ctmc_spki.append(nn)
-#             ctmc_data.append(np.array(ctmc_spkt))
-#             ctmc_ids.append(np.array(ctmc_spki))
-            
-#         ### measure CTMC isi
-#         ctmc_isi = []
-#         for rr in range(len(ctmc_data)):
-#             spkt = ctmc_data[rr]
-#             spki = ctmc_ids[rr]
-#             for nn in range(N): #(N):
-#                 pos = np.where(spki==nn)[0]
-#                 spks = spkt[pos]
-#                 if len(spks)>2:
-#                     isis = np.diff(spks)
-#                     ctmc_isi.append(isis)
-#         ctmc_isi = np.concatenate(ctmc_isi, axis=0)
-        
-#         ### # CG weights
-#         weff12,weff13,weff21 = coarse_grain_tauC((1,2,3),tau,C), coarse_grain_tauC((1,3,2),tau,C), coarse_grain_tauC((2,1,3),tau,C)
-#         weff23,weff32,weff31 = coarse_grain_tauC((2,3,1),tau,C), coarse_grain_tauC((3,2,1),tau,C), coarse_grain_tauC((3,1,2),tau,C)
-#         cg_weights = np.array([weff12,weff13,weff21,weff23,weff32,weff31])
-        
-#         ### infer weights
-#         f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
-#         w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
-#         w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
-#         inf_w = np.array([w12,w13,w21,w23,w32,w31])
-        
-#         ### KL and weights
-#         kl_isi_i, hist_LIF, hist_ctmc = kl_divergence(LIF_isi, ctmc_isi, isi_bins)
-#         KL_isi[mm, ni] = kl_isi_i
-#         true_s = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
-#         cc_weight, _ = pearsonr(inf_w, true_s)
-#         weight_corr[mm, ni] = cc_weight
-#         cc_cg, _ = pearsonr(cg_weights, true_s)
-#         cg_corr[mm, ni] = cc_cg
-        
-#         ### recording...
-#         element = {'KL_isi': kl_isi_i,  'inf_w':inf_w, 'cg_w':cg_weights, \
-#                    'weight_corr': cc_weight, 'gij_corr': cc_cg, 'true_s':true_s, 'hist_LIF':hist_LIF, 'hist_ctmc':hist_ctmc}
-#         row.append(element)
-#     weight_isi_scan.append(row)
-
-
-# # %%
-# plt.figure()
-# # plt.plot(KL_isi.reshape(-1), weight_corr.reshape(-1),'.')
-# plt.plot(KL_isi.reshape(-1), cg_corr.reshape(-1),'.')
-
-# %% load data
-import pickle
-# Load variables from file
-with open(DATA_DIR / "weight_isi_scan3.pkl", 'rb') as f:
-    loaded_data = pickle.load(f)
-weight_isi_scan = loaded_data*1 
-
-# %%
-plt.figure()
-cols = ['r','b','g','k']
-msize = range(1,len(noise_amps)+1)
-for mm in range(4):
+for mm in range(len(motifs)):
+    row = []
     for ni in range(len(noise_amps)):
-        temp_isi = weight_isi_scan[mm][ni]['KL_isi']
-        # temp_corr = weight_isi_scan[mm][ni]['gij_corr']
-        # temp_corr = weight_isi_scan[mm][ni]['weight_corr']
-        # temp_corr = corr_param(weight_isi_scan[mm][ni]['inf_w'], weight_isi_scan[mm][ni]['true_s'])
-        temp_corr = cos_ang(weight_isi_scan[mm][ni]['inf_w'], weight_isi_scan[mm][ni]['true_s'])
-        plt.plot(temp_isi, temp_corr, 'o', markersize=msize[ni]*1.5+1, color=cols[mm])
-plt.xlabel('KL of ISI', fontsize=20)
-plt.ylabel('c.c. of weights', fontsize=20)
+        print('m:'+str(mm) + ', n:'+str(ni))
+        ### generate LIF spikes
+        S = motifs[mm]*1
+        firing, spike_id, spike_times = LIF_motifs(S, noise_amps[ni])
+        
+        ### measure LIF isi
+        LIF_isi = []
+        for nn in range(N): #(N):
+            pos = np.where(np.array(spike_id)==nn)[0]
+            spks = np.array(spike_times)[pos]
+            if len(spks)>2:
+                spks = spks[np.where(spks<lt)[0]]
+                isis = np.diff(spks)/dt
+                LIF_isi.append(isis)
+        LIF_isi = np.concatenate(LIF_isi, axis=0)
+
+        ### do inference with CTMC
+        spk_states, spk_times = spk2statetime(firing, adapt_window, lt=lt)  # embedding states
+        tau,C = compute_tauC(spk_states, spk_times)  # emperical measurements
+        tau_, C_ = tau/lt, C/lt # correct normalization
+
+        ### infering M
+        M_inf = (C_/tau_[:,None]) ### hijack here
+        np.fill_diagonal(M_inf, np.zeros(nc))
+        Q = M_inf*1 
+        np.fill_diagonal(Q, -np.sum(Q,1))
+        
+        ### reconstruct CTMC spikes
+        reps_ctmc = 200        
+        ctmc_data, ctmc_ids = [], []
+        for rr in range(reps_ctmc):
+            ctmc_s, ctmc_t = sim_Q(Q, 100000, 1)
+            ctmc_spkt, ctmc_spki = [],[]
+            btt = []
+            for tt in range(1, len(ctmc_t)):
+                state = ctmc_s[tt]
+                time = ctmc_t[tt]
+                word = np.array(combinations[state])
+                for nn in range(N):
+                    if word[nn]==1:
+                        ctmc_spkt.append(time)
+                        ctmc_spki.append(nn)
+            ctmc_data.append(np.array(ctmc_spkt))
+            ctmc_ids.append(np.array(ctmc_spki))
+            
+        ### measure CTMC isi
+        ctmc_isi = []
+        for rr in range(len(ctmc_data)):
+            spkt = ctmc_data[rr]
+            spki = ctmc_ids[rr]
+            for nn in range(N): #(N):
+                pos = np.where(spki==nn)[0]
+                spks = spkt[pos]
+                if len(spks)>2:
+                    isis = np.diff(spks)
+                    ctmc_isi.append(isis)
+        ctmc_isi = np.concatenate(ctmc_isi, axis=0)
+        
+        ### # CG weights
+        weff12,weff13,weff21 = coarse_grain_tauC((1,2,3),tau,C), coarse_grain_tauC((1,3,2),tau,C), coarse_grain_tauC((2,1,3),tau,C)
+        weff23,weff32,weff31 = coarse_grain_tauC((2,3,1),tau,C), coarse_grain_tauC((3,2,1),tau,C), coarse_grain_tauC((3,1,2),tau,C)
+        cg_weights = np.array([weff12,weff13,weff21,weff23,weff32,weff31])
+        
+        ### infer weights
+        f1,f2,f3 = M_inf[0,4], M_inf[0,2], M_inf[0,1]
+        w12,w13,w21 = np.log(M_inf[4,6]/f2), np.log(M_inf[4,5]/f3), np.log(M_inf[2,6]/f1)
+        w23,w32,w31 = np.log(M_inf[2,3]/f3), np.log(M_inf[1,3]/f2), np.log(M_inf[1,5]/f1)
+        inf_w = np.array([w12,w13,w21,w23,w32,w31])
+        
+        ### KL and weights
+        kl_isi_i, hist_LIF, hist_ctmc = kl_divergence(LIF_isi, ctmc_isi, isi_bins)
+        KL_isi[mm, ni] = kl_isi_i
+        true_s = np.array([S[1,0],S[2,0],S[0,1],S[2,1],S[1,2],S[0,2]])
+        cc_weight, _ = pearsonr(inf_w, true_s)
+        weight_corr[mm, ni] = cc_weight
+        cc_cg, _ = pearsonr(cg_weights, true_s)
+        cg_corr[mm, ni] = cc_cg
+        
+        ### recording...
+        element = {'KL_isi': kl_isi_i,  'inf_w':inf_w, 'cg_w':cg_weights, \
+                   'weight_corr': cc_weight, 'gij_corr': cc_cg, 'true_s':true_s, 'hist_LIF':hist_LIF, 'hist_ctmc':hist_ctmc}
+        row.append(element)
+    weight_isi_scan.append(row)
+
 
 # %%
 plt.figure()
-mm = 3
-temp_isi, temp_corr, temp_corr_s = [], [], []
-for ni in range(len(noise_amps)):
-    temp_isi.append(weight_isi_scan[mm][ni]['KL_isi'])
-    # temp_corr.append(weight_isi_scan[mm][ni]['gij_corr']) 
-    # temp_corr.append(weight_isi_scan[mm][ni]['weight_corr'])
-    temp_corr.append(cos_ang(weight_isi_scan[mm][ni]['inf_w'], weight_isi_scan[mm][ni]['true_s']))
-    temp_corr_s.append(corr_param(weight_isi_scan[mm][ni]['inf_w'], weight_isi_scan[mm][ni]['true_s']))
-reorder = np.argsort(np.array(temp_isi))
-temp_isi, temp_corr = np.array(temp_isi), np.array(temp_corr)
-plt.plot(temp_isi[reorder], temp_corr[reorder], '-o')#, markersize=msize[ni]*0.5+1, color=cols[mm])
-plt.xlabel('KL of ISI', fontsize=20)
-plt.ylabel('c.c. of weights', fontsize=20)
-
-# %% double-y
-print(temp_isi)
-plt.figure()
-plt.plot(noise_amps, temp_isi, 'k-o')
-plt.ylabel('KL of ISI', fontsize=20)
-plt.twinx()
-plt.plot(noise_amps, temp_corr, '-o', color='r')  # You can specify the color here if needed
-# plt.plot(noise_amps, temp_corr_s, '--o', color='r') 
-plt.ylabel('cc. of weights', color='r', fontsize=20); plt.ylim([-.7,1])
-plt.gca().tick_params(axis='y', colors='r')
-plt.xlabel('noise level', fontsize=20)
-plt.xscale('log')
-# plt.savefig('ISI_chain.pdf')
-
-# %%
-mm = 0
-bb = (isi_bins[1:] + isi_bins[:-1])/2
-select = [0,3,8]
-for ii in range(3):
-    plt.figure()
-    hist_c = weight_isi_scan[mm][select[ii]]['hist_ctmc']
-    hist_l = weight_isi_scan[mm][select[ii]]['hist_LIF']
-    plt.plot(bb, hist_l, label='LIF')
-    plt.plot(bb, hist_c, label='CTMC')
-    plt.yscale('log'); plt.legend(fontsize=20)
-    # plt.savefig('ISI_EI_'+ str(ii+1) +'.pdf')
-
-plt.show()
+# plt.plot(KL_isi.reshape(-1), weight_corr.reshape(-1),'.')
+plt.plot(KL_isi.reshape(-1), cg_corr.reshape(-1),'.')

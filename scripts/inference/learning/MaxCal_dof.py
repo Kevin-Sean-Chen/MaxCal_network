@@ -281,15 +281,4 @@ plt.legend(fontsize=20); plt.ylabel('EP', fontsize=20)
 print('infinite diff: ', np.sum(C_i,0) - np.sum(C_i,1))
 print('finite diff: ', np.sum(C_f,0) - np.sum(C_f,1))
 
-# %%
-# three traces scaling with DOF (infinite vs finite data)
-# - KL (maybe keep analytic sorting order)
-# - peerson correlation (of the elements)
-# - EP (may fluctuate later with C) (pij comes within Maxcal!, pair not transition, k!!!)
-
-# %%
-# simulate spikes now!!!
-# check motifs and rare events
-# in parallel download retina data
-
 plt.show()
