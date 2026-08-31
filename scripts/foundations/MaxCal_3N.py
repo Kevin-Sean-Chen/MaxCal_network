@@ -46,7 +46,6 @@ def param2frw(param):
 # all elements contain f*exp(w) and r
 # zero-out pairs more than one bit flip
 
-# if works!! (hopefully)
 # sim 5 spiking neurons
 # get 5 neurons retinal data
 def general_M(param):
@@ -332,7 +331,6 @@ def eq_constraint(param, observations, Cp_condition):
 # %% ##########################################################################
 # Notes:
     ### check on CTMC matrix
-    ### should I turn back to the constraint-opimization code, rather than using g(x,y)?\
     ### if so we don't need the tilted matrix q right, is there a preference?
 
 # %% constrained optimization

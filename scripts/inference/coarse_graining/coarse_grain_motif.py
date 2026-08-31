@@ -27,8 +27,7 @@ DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 motif_type = 'common'  # common, chain, cyclic
 
-# with open(DATA_DIR / f"motif_{motif_type}.pkl", 'rb') as f:
-with open(DATA_DIR / "C4_3neuron_LIF_match.pkl", 'rb') as f:
+with open(DATA_DIR / f"motif_{motif_type}.pkl", 'rb') as f:
     loaded_data = pickle.load(f)
     
 firing = loaded_data['firing']

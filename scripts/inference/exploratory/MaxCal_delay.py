@@ -188,7 +188,6 @@ plt.plot(spk_states)
 # check if Wij roughly matches M
 # check how to interpret higher-order w_ijk -> response curve!
 # come back to thinkig about the time window
-#... retina!!
 
 ###############################################################################
 # IMPORTANT
@@ -197,7 +196,6 @@ plt.plot(spk_states)
 ###
 # phase portait of W strength vs. noise strength, and measure correlation of reconstruction
 # play with motif
-# download retina
 ###
 
 # %% CTMC setup
@@ -263,7 +261,7 @@ def edge_flux_inf(param):
                 flux_ij[ii,jj] = pi[ii]*kij[ii,jj]
     return flux_ij
 
-# %% Maxcal functions (should write better code and import once confirmed...)
+# %% MaxCal helper functions
 def MaxCal_D(kij, kij0, param):
     """
     KL devergence term, with transition Pij and prior rate kij0 as input
@@ -339,7 +337,7 @@ result = minimize(objective_param, param0, args=(P0), method='SLSQP', constraint
 # computed and record the corresponding KL
 param_temp = result.x
 
-# %% attempt to compare inferred M and nework W... ask Peter~
+# %% compare inferred M and network W
 M_inf, pi_inf = param2M(param_temp)
 plt.figure()
 plt.imshow(M_inf, aspect='auto')

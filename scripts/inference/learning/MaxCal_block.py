@@ -215,7 +215,7 @@ spk_states, spk_times = spk2statetime(firing, wind)  # embedding states
 tau_count, C_count = compute_tauC(spk_states, spk_times, lt=lt)  # emperical measurements
 C_base,_ = param2M(np.ones(num_params))
 np.fill_diagonal(C_base, np.zeros(nc))
-# C_count = C_count+C_base ##### cheeting here!!!
+# C_count = C_count+C_base  # Add pseudocounts.
 lt = np.sum(tau_count)
 tau_spk, C_spk = tau_count/lt, C_count/lt # correct normalization
 observations_spk = np.concatenate((tau_spk, C_spk.reshape(-1))) 

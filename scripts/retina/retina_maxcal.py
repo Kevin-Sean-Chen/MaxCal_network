@@ -24,7 +24,7 @@ matplotlib.rc('ytick', labelsize=20)
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-# %% loading retina!
+# %% load retina data
 mat_data = scipy.io.loadmat(DATA_DIR / "Data_processed.mat")
 dataset = 1  # 0-natural, 1-Brownian, 2-repeats
 nid = 34  # neuron example
@@ -56,7 +56,7 @@ nids = np.array([3, 34, 13])  #3,34,13  # for figure 7
 # nids = np.array([40,1,31])   # for SI plot
 nids = np.array([11,12,46]) ### testing
 
-# %% plot three neuron for Peter
+# %% plot a three-neuron example
 trial_id = 0  
 plt.figure()
 for nn in range(3):
@@ -125,7 +125,7 @@ for dd in range(1,2):   #### range(1,2) for bar #try all data!!
         
             firing_s.append(firing)
         
-# %% some tests!!
+# %% validation checks
 window = int(20/dt)  # .1ms window
 trial_id = 0
 spk_state_all = []
@@ -327,7 +327,7 @@ M_data = (C_new/tau_new[:,None])
 M_data[np.isnan(M_data)] = 0
 np.fill_diagonal(M_data, -np.sum(M_data,1))
 
-# %% testing CTMC generative process!!
+# %% test the CTMC generative process
 M_inf = (C_/tau_[:,None])
 np.fill_diagonal(M_inf, np.zeros(nc))
 Q = M_inf*1 

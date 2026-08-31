@@ -30,7 +30,6 @@ matplotlib.rc('ytick', labelsize=20)
 # all elements contain f*exp(w) and r
 # zero-out pairs more than one bit flip
 
-# if works!! (hopefully)
 # sim 5 spiking neurons <- 3-4 might be enough! figure out input and strength
 # get 5 neurons retinal data
 # ... show effective coupling and effective field

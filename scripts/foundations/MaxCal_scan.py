@@ -25,7 +25,6 @@ matplotlib.rc('ytick', labelsize=20)
 # find a way to tune the tolerance
 # plot tol vs. error; with a bad f,r,w
 
-# if this doesn't work... return to constraint that are direct: pi, Pijs
 tolerance = 10**-30
 
 # %% 2-neuron setup
@@ -194,7 +193,6 @@ print('beta*:'+str(beta_inf))
 result = minimize(objective_comb, beta0, args=(g_bar, param_true),tol=tolerance,method='Powell',bounds=[(0,100)]*num_const)  #SLSQP
 beta_true = result.x
 print('beta-true:'+str(beta_true))
-#### maybe try to decrease tolerance
 
 # %% analyze inference
 # inferred posterior matrix
@@ -244,7 +242,7 @@ plt.title('proportional error Pxy (ratio)', fontsize=30)
 
 
 # %% debugging to check if observables are returned
-### use inferred pi!!!!!
+### use inferred pi
 pi_00_, pi_01_, pi_10_, pi_11_ = pi_ss_inf_comb ## use inferred pi
 Minf = post_k_comb*1
 eta_00_10_inf = pi_00_*Minf[0,2] + pi_10_*Minf[2,0]

@@ -1,7 +1,6 @@
 ##################################################################
 ## a more solid likelihood-based method for GC
-## this should improve GC performance at least...
-### NOTE: TE doesn't reallty work, no trial structure, so here we focus on spiking GC
+### Focus on spiking GC because transfer entropy requires trial structure.
 ##################################################################
 """
 Minimal Kim-Brown-style point-process GLM baseline vs MaxCal.

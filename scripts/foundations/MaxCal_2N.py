@@ -170,7 +170,6 @@ plt.legend(fontsize=20)
 
 
 ### 08.24.23: seems that two observables are degenerate
-### Peter would come back to me:)
 # %% checking second posterior from the inferred parameters
 ### numerical method
 def objective_param(param_inf, post_k1):
@@ -185,7 +184,7 @@ param_inf = result.x
 f2,r2,w2 = param_inf
 M2,_ = sym_M(f2, r2, w2)
 
-### Peter's analytic method
+### Analytic method
 f2 = np.sqrt((eta_02 + J02)/pi_00)
 r2 = np.sqrt((eta_02 - J02)/pi_11)
 piB1 = pi_01 + pi_10
@@ -455,7 +454,7 @@ ax.legend(fontsize=20)
 ##    for jj in range(nc):
 ##        for cc in range(num_const):
 ##            Gxy[ii,jj,cc] = constraint_list[cc](combinations[ii] , combinations[jj], obs_list[cc])
-##        Mxy_[ii,jj] = Mxy[ii,jj] * np.exp(Gxy[ii,jj,:]@beta)  # eqn.1 in Peter's note
+##        Mxy_[ii,jj] = Mxy[ii,jj] * np.exp(Gxy[ii,jj,:]@beta)  # Analytic update
 ##lamb, Pxy, Pyx = lamb_beta(beta)
 #
 ## %% optimization

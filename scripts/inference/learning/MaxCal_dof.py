@@ -140,7 +140,7 @@ tau_infinite = pi_ss*total_time
 flux_ij_true = edge_flux_inf(param_true)
 C_infinite = flux_ij_true* total_time
 
-# %% Maxcal functions (should write better code and import once confirmed...)
+# %% MaxCal helper functions
 def MaxCal_D(kij, kij0, param):
     """
     KL devergence term, with transition Pij and prior rate kij0 as input

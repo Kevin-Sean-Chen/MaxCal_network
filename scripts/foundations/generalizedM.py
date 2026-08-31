@@ -16,7 +16,6 @@ import matplotlib
 # all elements contain f*exp(w) and r
 # zero-out pairs more than one bit flip
 
-# if works!! (hopefully)
 # sim 5 spiking neurons
 # get 5 neurons retinal data
 def general_M(param):

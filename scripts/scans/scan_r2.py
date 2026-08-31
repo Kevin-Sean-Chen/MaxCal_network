@@ -182,11 +182,4 @@ plt.xticks(np.arange(len(n_s)), n_s); plt.yticks(np.arange(len(w_s)), w_s)
 plt.xlabel('noise', fontsize=20); plt.ylabel('network', fontsize=20); plt.title('cos-angle', fontsize=20)
 # plt.savefig('w_n_scan.pdf')
 
-# %% IDEAS
-# alter window according to ISI in data
-# early cutoff for constraints!
-#... next:
-# play with motif (cyclic and mutual inhibition)
-# download retina
-
 plt.show()

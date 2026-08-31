@@ -338,7 +338,6 @@ def objective_GartnerEllis(beta, g_bar, kij0):
 # %% ##########################################################################
 # Notes:
     ### check on CTMC matrix
-    ### should I turn back to the constraint-opimization code, rather than using g(x,y)?\
     ### if so we don't need the tilted matrix q right, is there a preference?
 # %% test optimization (place holder for now)
 # pi_marg = 0

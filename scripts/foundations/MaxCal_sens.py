@@ -200,8 +200,7 @@ def get_stationary(M):
     pix = (vrx)*vlx/(lamb)
     return pix, lamb
 
-# %% try MaxCal optimization!!
-### but maybe check with Peter first~ (done!)
+# %% MaxCal optimization
 ### setup to prior matrix
 Mxy = np.random.rand(nc, nc) + np.eye(nc)*0  #  4x4-pattern transition matrix
 Mxy = Mxy / Mxy.sum(1)[:,None]  # normalize as transition matrix
